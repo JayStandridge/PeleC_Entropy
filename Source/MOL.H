@@ -115,6 +115,7 @@ mol_slope(
 }
 
 void pc_compute_hyp_mol_flux(
+  amrex::Geometry const& geom,
   const amrex::Box& cbox,
   const amrex::Array4<const amrex::Real>& q,
   const amrex::Array4<const amrex::Real>& qaux,
@@ -124,6 +125,7 @@ void pc_compute_hyp_mol_flux(
   const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> del,
   const int plm_iorder,
   const bool use_laxf_flux,
+  const amrex::Array4<const amrex::Real>& vfrac,
   const amrex::Array4<amrex::EBCellFlag const>& flags,
   const EBBndryGeom* ebg,
   const int Nebg,

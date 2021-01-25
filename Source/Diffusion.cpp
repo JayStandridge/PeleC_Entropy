@@ -366,8 +366,8 @@ PeleC::getMOLSrcTerm(
           amrex::Real* d_eb_flux_thdlocal =
             (nFlux > 0 ? eb_flux_thdlocal.dataPtr() : nullptr);
           pc_compute_hyp_mol_flux(
-            cbox, qar, qauxar, flx, area_arr, dx, plm_iorder, use_laxf_flux,
-            flags.array(mfi), d_sv_eb_bndry_geom, Ncut, d_eb_flux_thdlocal,
+            geom, cbox, qar, qauxar, flx, area_arr, dx, plm_iorder, use_laxf_flux,
+            vfrac.array(mfi), flags.array(mfi), d_sv_eb_bndry_geom, Ncut, d_eb_flux_thdlocal,
             nFlux);
         }
 
