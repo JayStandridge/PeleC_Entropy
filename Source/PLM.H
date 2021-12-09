@@ -24,7 +24,8 @@ plm_slope(
   const int k,
   const int n,
   const int dir,
-  amrex::Array4<const amrex::Real> const& q)
+  amrex::Array4<const amrex::Real> const& q,
+  const amrex::Real rho_scale = false)
 {
   const amrex::IntVect iv{AMREX_D_DECL(i, j, k)};
   const amrex::IntVect ivm2(iv - 2 * amrex::IntVect::TheDimensionVector(dir));
@@ -39,6 +40,14 @@ plm_slope(
   const amrex::Real qp = q(ivp, n);
   const amrex::Real qp2 = q(ivp2, n);
 
+  if(rho_scale){
+    qc*=q(iv,QRHO);
+    qm2*=q(ivm2, QRHO);
+    qm*=q(ivm, QRHO);
+    qp*=q(ivp, QRHO);
+    qp2*=q(ivp2, QRHO);
+  }
+  
   dlft = qm - qm2;
   drgt = qc - qm;
   dcen = 0.5 * (dlft + drgt);
@@ -69,7 +78,7 @@ plm_slope(
            : 0.0;
   dcen = dsgn * amrex::min<amrex::Real>(dlim, amrex::Math::abs(dcen));
 
-  dtemp = 4.0 / 3.0 * dcen - 1.0 / 6.0 * (dfp + dfm);
+  const amrex::Real dtemp = 4.0 / 3.0 * dcen - 1.0 / 6.0 * (dfp + dfm);
 
   // Flattening could be done here (see Nyx if we want to do it)
   return dsgn * amrex::min<amrex::Real>(dlim, amrex::Math::abs(dtemp));
@@ -102,20 +111,34 @@ pc_plm_d(
 
   const amrex::Real dtdx = dt / dx;
   const amrex::Real cs = cc * cc;
-  const amrex::Real rho = q(iv, QRHO);
+  amrex::Real rho = 0.0;
+  amrex::Real rhoY[NUM_SPECIES] = {0.0};
+  amrex::Real drho = 0.0;
+  amrex::Real drhoY[NUM_SPECIES] = {0.0};
+  for (int sp = 0; sp < NUM_SPECIES; sp++) {
+    rhoY[sp] = q(iv, QRHO) * q(iv, QFS + sp);
+    drhoY[sp] = slope[QFS + sp];
+    rho += rhoY[sp];
+    drho += drhoY[sp];
+  }
   const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> vel{
     AMREX_D_DECL(q(iv, QU), q(iv, QV), q(iv, QW))};
   const amrex::Real p = q(iv, QPRES);
   const amrex::Real rhoe = q(iv, QREINT);
   const amrex::Real enth = ((rhoe + p) / rho) / cs;
-  const amrex::Real drho = slope[QRHO];
   const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> dvel{
     AMREX_D_DECL(slope[QU], slope[QV], slope[QW])};
   const amrex::Real dp = slope[QPRES];
   const amrex::Real drhoe = slope[QREINT];
   const amrex::Real alpham = 0.5 * (dp / (rho * cc) - dvel[dir]) * rho / cc;
   const amrex::Real alphap = 0.5 * (dp / (rho * cc) + dvel[dir]) * rho / cc;
-  const amrex::Real alpha0r = drho - dp / cs;
+
+  amrex::Real alpha0r = 0.0;
+  amrex::Real alpha0rY[NUM_SPECIES] = {0.0};
+  for(int sp=0; sp<NUM_SPECIES; sp++){
+    alpha0rY[sp] = drhoY[sp] - q(i,j,k,QFS+sp) * dp/cs;
+    alpha0r += alpha0rY[sp];
+  }
   const amrex::Real alpha0e = drhoe - dp * enth;
   AMREX_D_TERM(, const amrex::Real alpha0v = dvel[l_idx[1]];
                , const amrex::Real alpha0w = dvel[l_idx[2]];)
@@ -123,8 +146,13 @@ pc_plm_d(
     vel[dir] - cc, vel[dir], vel[dir] + cc};
 
   //  Construct the right state on the i-1/2 interface
-  amrex::Real rho_ref =
-    rho - 0.5 * (1.0 + dtdx * amrex::min<amrex::Real>(wv[0], 0.0)) * drho;
+
+  amrex::Real rho_ref = 0.0;
+  amrex::Real rhoY_ref[NUM_SPECIES] = {0.0};
+  for(int sp=0; sp<NUM_SPECIES; sp++){
+    rhoY_ref[sp] = rhoY[sp] - 0.5 * (1.0 + dtdx * amrex::min<amrex::Real>(wv[0], 0.0)) * drhoY[sp];
+    rho_ref += rhoY_ref[sp];
+  }
   amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> vel_ref{
     AMREX_D_DECL(0.0, 0.0, 0.0)};
   for (int dim = 0; dim < AMREX_SPACEDIM; dim++) {
@@ -142,9 +170,14 @@ pc_plm_d(
                               alphap;
   const amrex::Real amright = 0.0;
 
-  const amrex::Real azrright = 0.25 * dtdx * (wv[0] - wv[1]) *
+  amrex::Real azrright = 0.0;
+  amrex::Real azrYright[NUM_SPECIES] = {0.0};
+  for(int sp=0; sp<NUM_SPECIES; sp++){
+    azrYright[sp] = 0.25 * dtdx * (wv[0] - wv[1]) *
                                (1.0 - amrex::Math::copysign(1.0, wv[1])) *
-                               alpha0r;
+                               alpha0rY[sp];
+    azrright += azrYright[sp];
+  }
   const amrex::Real azeright = 0.25 * dtdx * (wv[0] - wv[1]) *
                                (1.0 - amrex::Math::copysign(1.0, wv[1])) *
                                alpha0e;
@@ -155,9 +188,16 @@ pc_plm_d(
                    0.25 * dtdx * (wv[0] - wv[1]) *
                    (1.0 - amrex::Math::copysign(1.0, wv[1])) * alpha0w;)
 
-  qp(iv, QRHO) = rho_ref + apright + amright + azrright;
+  qp(iv, QRHO) = 0.0 ;
+  for(int sp=0; sp<NUM_SPECIES; sp++){ // MHDF rhoY or rhoY_ref?
+    qp(iv, QFS+sp) = rhoY_ref[sp] + rhoY[sp] * (apright + amright) + azrYright[sp];
+    qp(iv, QRHO) += qp(iv, QFS+sp);
+  }
   qp(iv, QRHO) = amrex::max<amrex::Real>(
     std::numeric_limits<amrex::Real>::min(), qp(iv, QRHO));
+  for(int sp=0; sp<NUM_SPECIES; sp++){
+    qp(iv, QFS+sp) /=  qp(iv, QRHO);
+  }
   AMREX_D_TERM(qp(iv, QU + l_idx[0]) =
                  vel_ref[l_idx[0]] + (apright - amright) * cc / rho;
                qp(iv, QU + l_idx[1]) = 0.; qp(iv, QU + l_idx[2]) = 0.;
@@ -170,8 +210,12 @@ pc_plm_d(
 
   //  Construct the left state on the i+1/2 interface
 
-  rho_ref =
-    rho + 0.5 * (1.0 - dtdx * amrex::max<amrex::Real>(wv[2], 0.0)) * drho;
+  rho_ref = 0.0;
+  rhoY_ref[NUM_SPECIES] = {0.0};
+  for(int sp=0; sp<NUM_SPECIES; sp++){
+    rhoY_ref[sp] = rhoY[sp] + 0.5 * (1.0 + dtdx * amrex::min<amrex::Real>(wv[2], 0.0)) * drhoY[sp];
+    rho_ref += rhoY_ref[sp];
+  }
   for (int dim = 0; dim < AMREX_SPACEDIM; dim++) {
     vel_ref[dim] =
       vel[dim] +
@@ -185,9 +229,14 @@ pc_plm_d(
   const amrex::Real amleft = 0.25 * dtdx * (wv[2] - wv[0]) *
                              (1.0 + amrex::Math::copysign(1.0, wv[0])) * alpham;
 
-  const amrex::Real azrleft = 0.25 * dtdx * (wv[2] - wv[1]) *
-                              (1.0 + amrex::Math::copysign(1.0, wv[1])) *
-                              alpha0r;
+  amrex::Real azrleft = 0.0;
+  amrex::Real azrYleft[NUM_SPECIES] = {0.0};
+  for(int sp=0; sp<NUM_SPECIES; sp++){
+    azrYleft[sp] = 0.25 * dtdx * (wv[2] - wv[1]) *
+                               (1.0 + amrex::Math::copysign(1.0, wv[1])) *
+                               alpha0rY[sp];
+    azrleft += azrYleft[sp];
+  }
   const amrex::Real azeleft = 0.25 * dtdx * (wv[2] - wv[1]) *
                               (1.0 + amrex::Math::copysign(1.0, wv[1])) *
                               alpha0e;
@@ -197,9 +246,17 @@ pc_plm_d(
                , const amrex::Real azw1left =
                    0.25 * dtdx * (wv[2] - wv[1]) *
                    (1.0 + amrex::Math::copysign(1.0, wv[1])) * alpha0w;)
-  qm(ivp, QRHO) = rho_ref + apleft + amleft + azrleft;
+
+  qm(ivp, QRHO) = 0.0 ;
+  for(int sp=0; sp<NUM_SPECIES; sp++){ // MHDF rhoY or rhoY_ref?
+    qm(ivp, QFS+sp) = rhoY_ref[sp] + rhoY[sp] * (apleft + amleft) + azrYleft[sp];
+    qm(ivp, QRHO) += qm(ivp, QFS+sp);
+  }
   qm(ivp, QRHO) = amrex::max<amrex::Real>(
     qm(ivp, QRHO), std::numeric_limits<amrex::Real>::min());
+  for (int sp = 0; sp < NUM_SPECIES; sp++) {
+    qm(ivp, QFS + sp) /= qm(ivp, QRHO);
+  }
   AMREX_D_TERM(qm(ivp, QU + l_idx[0]) =
                  vel_ref[l_idx[0]] + (apleft - amleft) * cc / rho;
                qm(ivp, QU + l_idx[1]) = 0.; qm(ivp, QU + l_idx[2]) = 0.;
@@ -209,6 +266,7 @@ pc_plm_d(
   qm(ivp, QPRES) = amrex::max<amrex::Real>(
     qm(ivp, QPRES), std::numeric_limits<amrex::Real>::min());
   qm(ivp, QREINT) = rhoe_ref + (apleft + amleft) * enth * cs + azeleft;
+
   // Upwind the passive variables
   for (int ipassive = 0; ipassive < NPASSIVE; ++ipassive) {
     const int n = pmap.qpassMap[ipassive];

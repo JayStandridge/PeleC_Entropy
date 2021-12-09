@@ -182,14 +182,17 @@ pc_cmpflx(
   }
 
   const int bc_test_val = 1;
-  amrex::Real dummy_flx[NUM_SPECIES] = {0.0}; // FIXME later
+  amrex::Real flx_rhoY[NUM_SPECIES] = {0.0};
   riemann(
     ql(i, j, k, QRHO), ul, vl, v2l, ql(i, j, k, QPRES), spl, qr(i, j, k, QRHO),
     ur, vr, v2r, qr(i, j, k, QPRES), spr, bc_test_val, cav, ustar,
-    flx(i, j, k, URHO), dummy_flx, flx(i, j, k, f_idx[0]),
+    flx(i, j, k, URHO), flx_rhoY, flx(i, j, k, f_idx[0]),
     flx(i, j, k, f_idx[1]), flx(i, j, k, f_idx[2]), flx(i, j, k, UEDEN),
     flx(i, j, k, UEINT), q(i, j, k, GU), q(i, j, k, GV), q(i, j, k, GV2),
     q(i, j, k, GDPRES), q(i, j, k, GDGAME));
+  for (int sp = 0; sp < NUM_SPECIES; ++sp) {
+    flx(i, j, k, UFS + sp) = flx_rhoY[sp];
+  }
 
   amrex::Real flxrho = flx(i, j, k, URHO);
   for (int ipass = 0; ipass < NPASSIVE; ++ipass) {
@@ -235,6 +238,21 @@ pc_transdo(
   const amrex::Real flxw = cdtdx * (flxx(ivp0, UMZ) - flxx(iv, UMZ));
   const amrex::Real flxe = cdtdx * (flxx(ivp0, UEDEN) - flxx(iv, UEDEN));
   const amrex::Real c = qa(iv, QGAMC);
+  // MHDF: fixme remove later
+  for (int sp = 0; sp < NUM_SPECIES; ++sp) {
+    const int n = UFS + sp;
+    const int nqp = QFS + sp;
+    const amrex::Real compn = cdtdx * (flxx(ivp0, n) - flxx(iv, n));
+    amrex::Real rr = qyp(iv, QRHO);
+    amrex::Real rrnew = rr - flxrho;
+    amrex::Real compo = rr * qyp(iv, nqp) - compn;
+    qp(iv, nqp) = compo / rrnew;
+
+    rr = qym(ivp1, QRHO);
+    rrnew = rr - flxrho;
+    compo = rr * qym(ivp1, nqp) - compn;
+    qm(ivp1, nqp) = compo / rrnew;
+  }
   // Update passive variables
   for (int ipass = 0; ipass < NPASSIVE; ++ipass) {
     const int n = pmap.upassMap[ipass];
@@ -385,6 +403,20 @@ pc_transdd(
   const amrex::Real rrl = qzm(ivp2, QRHO);
   const amrex::Real rrnewl = rrl - flxrho;
   const amrex::Real rrnewr = rrr - flxrho;
+  // MHDF: fixme remove later
+  for (int sp = 0; sp < NUM_SPECIES; ++sp) {
+    const int n = UFS + sp;
+    const int nqp = QFS + sp;
+    const amrex::Real srcpass = srcq(iv, nqp);
+    const amrex::Real compn = cdtdx * (flxx(ivp0, n) - flxx(iv, n)) +
+                              cdtdy * (flxy(ivp1, n) - flxy(iv, n));
+    // qp
+    amrex::Real compo = rrr * qzp(iv, nqp) - compn;
+    qp(iv, nqp) = compo / rrnewr + hdt * srcpass;
+    // qm
+    compo = rrl * qzm(ivp2, nqp) - compn;
+    qm(ivp2, nqp) = compo / rrnewl + hdt * srcpass;
+  }
   for (int ipass = 0; ipass < NPASSIVE; ++ipass) {
     const int n = pmap.upassMap[ipass];
     const int nqp = pmap.qpassMap[ipass];
@@ -496,7 +528,12 @@ pc_transd(
     iv + amrex::IntVect::TheDimensionVector(dir == 0 ? 0 : 1));
   const int qvidx = (dir == 0) ? GDV : GDU;
 
-  const amrex::Real flxrho = cdtdx * (flxx(ivp0, URHO) - flxx(iv, URHO));
+  amrex::Real flxrhoY[NUM_SPECIES] = {0.0};
+  amrex::Real flxrho = 0.0;
+  for (int sp = 0; sp < NUM_SPECIES; ++sp) {
+    flxrhoY[sp] = cdtdx * (flxx(ivp0, UFS+sp) - flxx(iv, UFS+sp));
+    flxrho += flxrhoY[sp];
+  }  
   const amrex::Real flxu = cdtdx * (flxx(ivp0, UMX) - flxx(iv, UMX));
   const amrex::Real flxv = cdtdx * (flxx(ivp0, UMY) - flxx(iv, UMY));
   const amrex::Real flxe = cdtdx * (flxx(ivp0, UEDEN) - flxx(iv, UEDEN));
@@ -533,7 +570,12 @@ pc_transd(
   // QP
 
   // Convert to conservative
-  const amrex::Real rrr = qyp(iv, QRHO);
+  amrex::Real rrr = 0.0;
+  amrex::Real rrYr[NUM_SPECIES] = {0.0};
+  for (int sp = 0; sp < NUM_SPECIES; ++sp) {
+    rrYr[sp] = qyp(iv, QRHO) * qyp(iv, QFS+sp);
+    rrr += rrYr[sp];
+  }
   amrex::Real rur = qyp(iv, QU);
   amrex::Real rvr = qyp(iv, QV);
   const amrex::Real ekinr = 0.5 * rrr * (rur * rur + rvr * rvr);
@@ -542,13 +584,26 @@ pc_transd(
 
   const amrex::Real rer = qyp(iv, QREINT) + ekinr;
   // Add transverse predictor
-  const amrex::Real rrnewr = rrr - flxrho;
+  amrex::Real rrnewr = 0.0;
+  amrex::Real rrYnewr[NUM_SPECIES] = {0.0};
+  for (int sp = 0; sp < NUM_SPECIES; ++sp) {
+    rrYnewr[sp] = rrYr[sp] - flxrhoY[sp];
+    rrnewr += rrYnewr[sp];
+  }
   const amrex::Real runewr = rur - flxu;
   const amrex::Real rvnewr = rvr - flxv;
   const amrex::Real renewr = rer - flxe;
 
   // Convert back to primitive
-  qp(iv, QRHO) = rrnewr + hdt * srcr;
+  qp(iv, QRHO) = 0.0;
+  for (int sp = 0; sp < NUM_SPECIES; ++sp) {
+    qp(iv, QFS+sp) = rrYnewr[sp];
+    qp(iv, QRHO) += qp(iv, QFS+sp);
+  }
+  for (int sp = 0; sp < NUM_SPECIES; ++sp) {
+    qp(iv, QFS+sp) = qp(iv, QFS+sp) / qp(iv, QRHO) + hdt * srcQ(iv, QFS+sp);
+  }
+  qp(iv, QRHO) += hdt * srcr;
   qp(iv, QU) = runewr / rrnewr + hdt * srcQ(iv, QU);
   qp(iv, QV) = rvnewr / rrnewr + hdt * srcQ(iv, QV);
   const amrex::Real rhoekinr =
@@ -562,7 +617,12 @@ pc_transd(
   // QM
 
   // Conversion to Conservative
-  const amrex::Real rrl = qym(ivp1, QRHO);
+  amrex::Real rrl = 0.0;
+  amrex::Real rrYl[NUM_SPECIES] = {0.0};
+  for (int sp = 0; sp < NUM_SPECIES; ++sp) {
+    rrYl[sp] = qym(ivp1, QRHO) * qym(ivp1, QFS + sp);
+    rrl += rrYl[sp];
+  }
   amrex::Real rul = qym(ivp1, QU);
   amrex::Real rvl = qym(ivp1, QV);
   const amrex::Real ekinl = 0.5 * rrl * (rul * rul + rvl * rvl);
@@ -571,12 +631,25 @@ pc_transd(
   const amrex::Real rel = qym(ivp1, QREINT) + ekinl;
 
   // Transverse fluxes
-  const amrex::Real rrnewl = rrl - flxrho;
+  amrex::Real rrnewl = 0.0;
+  amrex::Real rrYnewl[NUM_SPECIES] = {0.0};
+  for (int sp = 0; sp < NUM_SPECIES; ++sp) {
+    rrYnewl[sp] = rrYl[sp] - flxrhoY[sp];
+    rrnewl += rrYnewl[sp];
+  }
   const amrex::Real runewl = rul - flxu;
   const amrex::Real rvnewl = rvl - flxv;
   const amrex::Real renewl = rel - flxe;
 
-  qm(ivp1, QRHO) = rrnewl + hdt * srcr;
+  qm(ivp1, QRHO) = 0.0;
+  for (int sp = 0; sp < NUM_SPECIES; ++sp) {
+    qm(ivp1, QFS+sp) = rrYnewl[sp];
+    qm(ivp1, QRHO) += qm(ivp1, QFS+sp);
+  }
+  for (int sp = 0; sp < NUM_SPECIES; ++sp) {
+    qm(ivp1, QFS+sp) = qm(ivp1, QFS+sp) / qm(ivp1, QRHO) + hdt * srcQ(iv, QFS+sp);
+  }
+  qm(ivp1, QRHO) += hdt * srcr;
   qm(ivp1, QU) = runewl / rrnewl + hdt * srcQ(iv, QU);
   qm(ivp1, QV) = rvnewl / rrnewl + hdt * srcQ(iv, QV);
   const amrex::Real rhoekinl =
@@ -662,6 +735,10 @@ pc_artif_visc(
     if (n != UTEMP) {
       flx(iv, n) += dx * div * (u(iv, n) - u(ivm, n));
     }
+  }
+  flx(iv, URHO) = 0.0;
+  for(int sp=0; sp<NUM_SPECIES; sp++){
+    flx(iv, URHO) += flx(iv, UFS+sp);
   }
   flx(iv, UTEMP) = 0.0;
 }

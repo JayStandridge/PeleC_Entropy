@@ -550,15 +550,19 @@ pc_umeth_2D(
       bxg2, [=] AMREX_GPU_DEVICE(int i, int j, int k) noexcept {
         amrex::Real slope[QVAR];
         // X slopes and interp
-        for (int n = 0; n < QVAR; ++n)
-          slope[n] = plm_slope(i, j, k, n, 0, q);
+        for (int n = 0; n < QVAR; ++n){
+          const bool rho_scale = ((n>= QFS) && (n<QFS+NUM_SPECIES));
+          slope[n] = plm_slope(i, j, k, n, 0, q, rho_scale);
+        }
         pc_plm_d(
           i, j, k, 0, qxmarr, qxparr, slope, q, qaux(i, j, k, QC), dx, dt,
           *lpmap);
 
         // Y slopes and interp
-        for (int n = 0; n < QVAR; n++)
-          slope[n] = plm_slope(i, j, k, n, 1, q);
+        for (int n = 0; n < QVAR; n++){
+          const bool rho_scale = ((n>= QFS) && (n<QFS+NUM_SPECIES));
+          slope[n] = plm_slope(i, j, k, n, 1, q, rho_scale);
+        }
         pc_plm_d(
           i, j, k, 1, qymarr, qyparr, slope, q, qaux(i, j, k, QC), dy, dt,
           *lpmap);

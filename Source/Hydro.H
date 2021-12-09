@@ -41,6 +41,10 @@ pc_srctoprim(
       (srcq(i, j, k, QREINT) - q(i, j, k, QREINT) * srcrho * rhoinv) * rhoinv +
     qa(i, j, k, QDPDR) * srcrho;
 
+  for (int sp = 0; sp < NUM_SPECIES; ++sp) {
+    srcq(i, j, k, QFS + sp) =
+      (src(i, j, k, UFS + sp) - q(i, j, k, QFS + sp) * srcrho) * rhoinv;
+  }
   for (int ip = 0; ip < NPASSIVE; ++ip) {
     const int n = pmap.upassMap[ip];
     const int nq = pmap.qpassMap[ip];

@@ -276,6 +276,9 @@ pc_ctoprim(
   q(i, j, k, QU) = vx;
   q(i, j, k, QV) = vy;
   q(i, j, k, QW) = vz;
+  for (int sp = 0; sp < NUM_SPECIES; ++sp) {
+    q(i, j, k, QFS + sp) = u(i, j, k, UFS + sp) / rho;
+  }
   for (int ipassive = 0; ipassive < NPASSIVE; ++ipassive) {
     const int n = pmap.upassMap[ipassive];
     const int nq = pmap.qpassMap[ipassive];

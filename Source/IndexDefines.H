@@ -72,7 +72,7 @@
 #define NQAUX 6
 #define NGDNV 6
 
-#define NPASSIVE NUM_SPECIES + NUM_ADV + NUM_AUX + 3 - AMREX_SPACEDIM
+#define NPASSIVE NUM_ADV + NUM_AUX + 3 - AMREX_SPACEDIM
 
 #if AMREX_SPACEDIM == 1
 // hopefully we wont do EB in 1D

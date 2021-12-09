@@ -3,7 +3,7 @@
 // Set up the source terms to go into the hydro.
 void
 PeleC::construct_hydro_source(
-  const amrex::MultiFab& S,
+  const amrex::MultiFab& Smf,
   amrex::Real time,
   amrex::Real dt,
   int /*amr_iteration*/,
@@ -119,7 +119,7 @@ PeleC::construct_hydro_source(
           flux_eli[dir] = flux[dir].elixir();
         }
 
-        auto const& s = S.array(mfi);
+        auto const& state = Smf.array(mfi);
         auto const& hyd_src = hydro_source.array(mfi);
 
         // Resize Temporary Fabs
@@ -141,7 +141,7 @@ PeleC::construct_hydro_source(
         amrex::ParallelFor(
           qbx, [=] AMREX_GPU_DEVICE(int i, int j, int k) noexcept {
             pc_ctoprim(
-              i, j, k, s, qarr, qauxar, *lpmap, captured_clean_massfrac);
+              i, j, k, state, qarr, qauxar, *lpmap, captured_clean_massfrac);
           });
         BL_PROFILE_VAR_STOP(ctop);
 
@@ -216,7 +216,7 @@ PeleC::construct_hydro_source(
             area[0].array(mfi), area[1].array(mfi), area[2].array(mfi))}};
         pc_umdrv(
           is_finest_level, time, fbx, domain_lo, domain_hi, phys_bc.lo(),
-          phys_bc.hi(), s, hyd_src, qarr, qauxar, srcqarr, dx, dt, ppm_type,
+          phys_bc.hi(), state, hyd_src, qarr, qauxar, srcqarr, dx, dt, ppm_type,
           use_flattening, difmag, flx_arr, a, volume.array(mfi), cflLoc);
         BL_PROFILE_VAR_STOP(purm);
 
@@ -342,8 +342,8 @@ pc_umdrv(
   const int* domhi,
   const int* bclo,
   const int* bchi,
-  amrex::Array4<const amrex::Real> const& uin,
-  amrex::Array4<amrex::Real> const& uout,
+  amrex::Array4<const amrex::Real> const& state,
+  amrex::Array4<amrex::Real> const& hyd_src,
   amrex::Array4<const amrex::Real> const& q,
   amrex::Array4<const amrex::Real> const& qaux,
   amrex::Array4<const amrex::Real> const&
@@ -415,8 +415,8 @@ pc_umdrv(
 void
 pc_consup(
   amrex::Box const& bx,
-  amrex::Array4<const amrex::Real> const& u,
-  amrex::Array4<amrex::Real> const& update,
+  amrex::Array4<const amrex::Real> const& state,
+  amrex::Array4<amrex::Real> const& hyd_src,
   const amrex::GpuArray<const amrex::Array4<amrex::Real>, AMREX_SPACEDIM> flx,
   const amrex::GpuArray<const amrex::Array4<const amrex::Real>, AMREX_SPACEDIM>
     a,
@@ -431,9 +431,10 @@ pc_consup(
     amrex::Box const& fbx = surroundingNodes(bx, dir);
     const amrex::Real dx = del[dir];
     amrex::ParallelFor(fbx, [=] AMREX_GPU_DEVICE(int i, int j, int k) noexcept {
-      pc_artif_visc(i, j, k, flx[dir], divu, u, dx, difmag, dir);
+      pc_artif_visc(i, j, k, flx[dir], div, state, dx, difmag, dir);
+      // MHDF: I don't think I need this anymore
       // Normalize Species Flux
-      pc_norm_spec_flx(i, j, k, flx[dir]);
+      //pc_norm_spec_flx(i, j, k, flx[dir]);
       // Make flux extensive
       pc_ext_flx(i, j, k, flx[dir], a[dir]);
     });
@@ -441,6 +442,6 @@ pc_consup(
 
   // Combine for Hydro Sources
   amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k) noexcept {
-    pc_update(i, j, k, update, flx, vol, pdivu);
+    pc_update(i, j, k, hyd_src, flx, vol, pdivu);
   });
 }
