@@ -100,6 +100,9 @@ void
 pc_norm_spec_flx(
   const int i, const int j, const int k, amrex::Array4<amrex::Real> const& flx)
 {
+  // This used to be called right after pc_artif_visc.
+  // It is not longer necessary because the Riemann solver ensures that
+  // flx_rho == sum flx_rhoY
   const int num = NUM_SPECIES + UFS;
   amrex::Real summ, fac;
   summ = 0.0;

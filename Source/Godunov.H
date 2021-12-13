@@ -182,19 +182,28 @@ pc_cmpflx(
   }
 
   const int bc_test_val = 1;
-  amrex::Real dummy_flx[NUM_SPECIES] = {0.0}; // FIXME later
+  amrex::Real flx_rhoY[NUM_SPECIES] = {0.0};
   riemann(
     ql(i, j, k, QRHO), ul, vl, v2l, ql(i, j, k, QPRES), spl, qr(i, j, k, QRHO),
     ur, vr, v2r, qr(i, j, k, QPRES), spr, bc_test_val, cav, ustar,
-    flx(i, j, k, URHO), dummy_flx, flx(i, j, k, f_idx[0]),
+    flx(i, j, k, URHO), flx_rhoY, flx(i, j, k, f_idx[0]),
     flx(i, j, k, f_idx[1]), flx(i, j, k, f_idx[2]), flx(i, j, k, UEDEN),
     flx(i, j, k, UEINT), q(i, j, k, GU), q(i, j, k, GV), q(i, j, k, GV2),
     q(i, j, k, GDPRES), q(i, j, k, GDGAME));
+  for (int sp = 0; sp < NUM_SPECIES; ++sp) {
+    flx(i, j, k, UFS + sp) = flx_rhoY[sp];
+  }
 
   amrex::Real flxrho = flx(i, j, k, URHO);
   for (int ipass = 0; ipass < NPASSIVE; ++ipass) {
     int n = pmap.upassMap[ipass];
     int nqp = pmap.qpassMap[ipass];
+
+    // skip species because the Riemann solver did them
+    if((UFS <= n) && (n<UFS+NUM_SPECIES)){
+      continue;
+    }
+
     if (ustar > 0.0)
       flx(i, j, k, n) = flxrho * ql(i, j, k, nqp);
     else if (ustar < 0.0)

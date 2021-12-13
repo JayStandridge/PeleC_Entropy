@@ -432,8 +432,6 @@ pc_consup(
     const amrex::Real dx = del[dir];
     amrex::ParallelFor(fbx, [=] AMREX_GPU_DEVICE(int i, int j, int k) noexcept {
       pc_artif_visc(i, j, k, flx[dir], divu, u, dx, difmag, dir);
-      // Normalize Species Flux
-      pc_norm_spec_flx(i, j, k, flx[dir]);
       // Make flux extensive
       pc_ext_flx(i, j, k, flx[dir], a[dir]);
     });
