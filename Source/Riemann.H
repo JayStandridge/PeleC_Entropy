@@ -132,6 +132,7 @@ riemann(
   qint_iv1 = mask ? 0.5 * (vl + vr) : qint_iv1;
   qint_iv2 = mask ? 0.5 * (v2l + v2r) : qint_iv2;
   amrex::Real rgd = 0.0;
+
   amrex::Real rspgd[NUM_SPECIES];
   for (int n = 0; n < NUM_SPECIES; n++) {
     rspgd[n] = frac * rspstar[n] + (1.0 - frac) * rspo[n];
@@ -282,4 +283,252 @@ laxfriedrich_flux(
   uflx_eint =
     0.5 * ((rl * el * ul + rr * er * ur) - max_wavespd * (rr * er - rl * el));
 }
+
+AMREX_GPU_DEVICE
+AMREX_FORCE_INLINE
+amrex::Real
+massflux(
+  const amrex::Real rho,
+  const amrex::Real cs,
+  const amrex::Real pQ,
+  const amrex::Real pm,
+  const amrex::Real gamma)
+{
+  // Returns the mass flux used for the exact Riemann solver. Inspired from:
+  // Katate Masatsuka, February 2009. http://www.cfdbooks.com
+  const amrex::Real eps = 1e2*std::numeric_limits<amrex::Real>::epsilon();
+  const amrex::Real gam1 = 0.5 * (gamma + 1) / gamma;
+  const amrex::Real gam2 = 0.5 * (gamma - 1) / gamma;
+
+  return (pm / pQ >= 1 - eps)
+           ? rho * cs * std::sqrt(1 + gam1 * (pm / pQ - 1))
+           : rho * cs * gam2 * (1 - pm / pQ) / (1 - std::pow(pm / pQ, gam2));
+}
+
+AMREX_GPU_DEVICE
+AMREX_FORCE_INLINE
+void
+sonic(
+  const amrex::Real u1,
+  const amrex::Real c1,
+  const amrex::Real P1,
+  const amrex::Real u2,
+  const amrex::Real c2,
+  const amrex::Real a1,
+  const amrex::Real a2,
+  const amrex::Real gamma,
+  amrex::Real& US1,
+  amrex::Real& US2,
+  amrex::Real& US3,
+  amrex::Real& US4)
+{ // Returns solutions at sonic points --- used in Godunov's flux. Inspired
+  // from: Katate Masatsuka, February 2009. http://www.cfdbooks.com
+
+  const amrex::Real R1 = a2 / (a2 - a1);
+  const amrex::Real R2 = -a1 / (a2 - a1);
+  const amrex::Real us = R1 * u1 + R2 * u2;
+  const amrex::Real cs = R1 * c1 + R2 * c2;
+  const amrex::Real Ps = std::pow(cs / c1, (2.0 * gamma / (gamma - 1))) * P1;
+  const amrex::Real rs = gamma * Ps / (cs * cs);
+
+  US1 = rs;
+  US2 = rs * us;
+  US3 = Ps / (gamma - 1) + 0.5 * rs * us * us;
+  US4 = Ps / (gamma - 1);
+}
+
+AMREX_GPU_DEVICE
+AMREX_FORCE_INLINE
+void
+riemann_exact(
+  const amrex::Real rl,
+  const amrex::Real ul,
+  const amrex::Real vl,
+  const amrex::Real v2l,
+  const amrex::Real pl,
+  const amrex::Real spl[NUM_SPECIES],
+  const amrex::Real rr,
+  const amrex::Real ur,
+  const amrex::Real vr,
+  const amrex::Real v2r,
+  const amrex::Real pr,
+  const amrex::Real spr[NUM_SPECIES],
+  const int bc_test_val,
+  const amrex::Real cav,
+  amrex::Real& ustar,
+  amrex::Real& uflx_rho,
+  amrex::Real uflx_rhoY[NUM_SPECIES],
+  amrex::Real& uflx_u,
+  amrex::Real& uflx_v,
+  amrex::Real& uflx_w,
+  amrex::Real& uflx_eden,
+  amrex::Real& uflx_eint,
+  amrex::Real& qint_iu,
+  amrex::Real& qint_iv1,
+  amrex::Real& qint_iv2,
+  amrex::Real& qint_gdpres,
+  amrex::Real& qint_gdgame)
+{
+  // Exact Riemann solver. Inspired from: Katate Masatsuka, February 2009.
+  // http://www.cfdbooks.com
+  auto eos = pele::physics::PhysicsType::eos();
+
+  AMREX_ALWAYS_ASSERT_WITH_MESSAGE(
+    NUM_SPECIES == 1, "Exact Riemann solver only works with single-species");
+
+  amrex::Real ml[NUM_SPECIES];
+  for (int n = 0; n < NUM_SPECIES; n++) {
+    ml[n] = spl[n];
+  }
+  amrex::Real cl = 0.0, el = 0.0, Tl = 0.0, gammal = 0.0;
+  eos.RYP2E(rl, ml, pl, el);
+  eos.RPY2Cs(rl, pl, ml, cl);
+  eos.REY2T(rl, el, ml, Tl);
+  eos.RTY2G(rl, Tl, ml, gammal);
+  const amrex::Real rel = rl * el;
+  const amrex::Real rEl = rel + 0.5 * rl * (ul * ul + vl * vl + v2l * v2l);
+
+  amrex::Real mr[NUM_SPECIES];
+  for (int n = 0; n < NUM_SPECIES; n++) {
+    mr[n] = spr[n];
+  }
+  amrex::Real cr = 0.0, er = 0.0, Tr = 0.0, gammar = 0.0;
+  eos.RYP2E(rr, mr, pr, er);
+  eos.RPY2Cs(rr, pr, mr, cr);
+  eos.REY2T(rr, er, mr, Tr);
+  eos.RTY2G(rr, Tr, mr, gammar);
+  const amrex::Real rer = rr * er;
+  const amrex::Real rEr = rer + 0.5 * rr * (ur * ur + vr * vr + v2r * v2r);
+  AMREX_ALWAYS_ASSERT_WITH_MESSAGE(
+    amrex::Math::abs(gammar - gammal) <
+      std::numeric_limits<amrex::Real>::epsilon(),
+    "Exact Riemann solver only works with single gamma");
+  const amrex::Real gamma = gammal;
+
+  // Supersonic flow to the right
+  if (ul / cl >= 1.0) {
+    ustar = ul;
+    qint_iu = ul;
+    qint_iv1 = vl;
+    qint_iv2 = v2l;
+
+    uflx_rho = rl * ul;
+    uflx_rhoY[0] = uflx_rho;
+    uflx_u = uflx_rho * ul + pl;
+    uflx_v = uflx_rho * vl;
+    uflx_w = uflx_rho * v2l;
+    uflx_eden = (rEl + pl) * ul;
+    uflx_eint = rel * ul;
+  }
+  // Supersonic flow to the left
+  else if (vr / cr <= -1) {
+    ustar = ur;
+    qint_iu = ur;
+    qint_iv1 = vr;
+    qint_iv2 = v2r;
+
+    uflx_rho = rr * ur;
+    uflx_rhoY[0] = uflx_rho;
+    uflx_u = uflx_rho * ur + pr;
+    uflx_v = uflx_rho * vr;
+    uflx_w = uflx_rho * v2r;
+    uflx_eden = (rEr + pr) * ur;
+    uflx_eint = rer * ur;
+  } else {
+    // Initial solution: (intersection of two linearized integral curves, which
+    // is actually the upper bound of the solution.)
+    amrex::Real pm1 = std::pow(
+      (0.5 * (ul - ur) * (gamma - 1) + cl + cr) /
+        (cl * std::pow(pl, ((1 - gamma) / gamma * 0.5)) +
+         cr * std::pow(pr, ((1 - gamma) / gamma * 0.5))),
+      (2 * gamma / (gamma - 1)));
+    amrex::Real pm2 = 0;
+    // amrex::Print() << "L: " << rl << " "<< ul << " " << pl << " " << rEl << " " << el << " " << cl << " " << Tl << std::endl;
+    // amrex::Print() << "R: " << rr << " "<< ur << " " << pr << " " << rEr << " " << er << " " << cr << " " << Tr << std::endl;
+
+    // Fixed-point iteration to find the pressure and velocity in the middle
+    // (i.e., find the intersection of two nonlinear integral curves.)
+    const amrex::Real tol = 1e-6;
+
+    const int kmax = 1000;
+    for (int k = 0; k < kmax + 2; k++) {
+      const amrex::Real mL = massflux(rl, cl, pl, pm1, gamma);
+      const amrex::Real mR = massflux(rr, cr, pr, pm1, gamma);
+      pm2 = (mL * pr + mR * pl - mL * mR * (ur - ul)) / (mL + mR);
+
+      // Test for fixed point convergence
+      if (amrex::Math::abs(pm2 - pm1) < tol) {
+        break;
+      }
+
+      AMREX_ALWAYS_ASSERT_WITH_MESSAGE(
+        k < kmax,
+        "Godunov fixed-point iteration did not converge. Exiting");
+
+      // Set old value to new value
+      pm1 = pm2;
+    }
+
+    //  Calculate the new fluxes
+    const amrex::Real mL = massflux(rl, cl, pl, pm2, gamma);
+    const amrex::Real mR = massflux(rr, cr, pr, pm2, gamma);
+    const amrex::Real vm = (mL * ul + mR * ur - (pr - pl)) / (mL + mR);
+
+    // Density in the middle
+    const amrex::Real r[2] = {rl, rr};
+    const amrex::Real P[2] = {pl, pr};
+    const amrex::Real gam = (gamma + 1) / (gamma - 1);
+    amrex::Real rm[2] = {0.0};
+    for (int k = 0; k < 2; k++) {
+      if ((pm2 / P[k]) >= 1) {
+        rm[k] = r[k] * (1 + gam * pm2 / P[k]) / (gam + pm2 / P[k]);
+      } else {
+        rm[k] = r[k] * std::pow(pm2 / P[k], (1.0 / gamma));
+      }
+    }
+
+    // Contact wave to the right or left?
+    amrex::Real rmI = (vm >= 0) ? rm[0] : rm[1];
+
+    // Wave speeds at the interface, x/t = 0
+    const amrex::Real amL = std::sqrt(gamma * pm2 / rm[0]);
+    const amrex::Real amR = std::sqrt(gamma * pm2 / rm[1]);
+    const amrex::Real SmL = vm - amL;
+    const amrex::Real SmR = vm + amR;
+
+    // Sonic case
+    amrex::Real Um2 = 0.0, Um3 = 0.0, Um4 = 0.0;
+    if ((SmL <= 0) && (SmR >= 0)) {
+      Um2 = rmI * vm;
+      Um3 = pm2 / (gamma - 1) + 0.5 * rmI * vm * vm;
+      Um4 = pm2 / (gamma - 1);
+    } else if ((SmL > 0) && (ul - cl < 0)) {
+      sonic(ul, cl, pl, vm, amL, ul - cl, SmL, gamma, rmI, Um2, Um3, Um4);
+    } else if ((SmR < 0) && (ur + cr > 0)) {
+      sonic(ur, cr, pr, vm, amR, ur + cr, SmR, gamma, rmI, Um2, Um3, Um4);
+    }
+
+    // Compute the flux: evaluate the physical flux at the interface (middle)
+    const amrex::Real pm = (gamma - 1) * (Um3 - 0.5 * Um2 * Um2 / rmI);
+    ustar = Um2 / rmI;
+    qint_iu = Um2 / rmI;
+    bool mask = ustar > 0.0;
+    qint_iv1 = mask ? vl : vr;
+    qint_iv2 = mask ? v2l : v2r;
+    mask = (ustar == 0.0);
+    qint_iv1 = mask ? 0.5 * (vl + vr) : qint_iv1;
+    qint_iv2 = mask ? 0.5 * (v2l + v2r) : qint_iv2;
+    qint_gdpres = pm;
+    qint_gdgame = qint_gdpres / Um4 + 1.0;
+
+    uflx_rho = Um2;
+    uflx_rhoY[0] = uflx_rho;
+    uflx_u = uflx_rho * qint_iu + pm;
+    uflx_v = uflx_rho * qint_iv1;
+    uflx_w = uflx_rho * qint_iv2;
+    uflx_eden = (Um3 + pm) * qint_iu;
+    uflx_eint = Um4 * qint_iu;
+  }
+}
+
 #endif

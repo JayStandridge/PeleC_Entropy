@@ -134,7 +134,7 @@ pc_compute_hyp_mol_flux(
         if (!use_laxf_flux) {
           amrex::Real qint_iu = 0.0, tmp1 = 0.0, tmp2 = 0.0, tmp3 = 0.0,
                       tmp4 = 0.0;
-          riemann(
+          riemann_exact(
             qtempl[R_RHO], qtempl[R_UN], qtempl[R_UT1], qtempl[R_UT2],
             qtempl[R_P], spl, qtempr[R_RHO], qtempr[R_UN], qtempr[R_UT1],
             qtempr[R_UT2], qtempr[R_P], spr, bc_test_val, cavg, ustar,

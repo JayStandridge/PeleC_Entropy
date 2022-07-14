@@ -302,7 +302,7 @@ pc_cmpflx(
 
   const int bc_test_val = 1;
   amrex::Real dummy_flx[NUM_SPECIES] = {0.0}; // FIXME later
-  riemann(
+  riemann_exact(
     ql(i, j, k, QRHO), ul, vl, v2l, ql(i, j, k, QPRES), spl, qr(i, j, k, QRHO),
     ur, vr, v2r, qr(i, j, k, QPRES), spr, bc_test_val, cav, ustar,
     flx(i, j, k, URHO), dummy_flx, flx(i, j, k, f_idx[0]),
