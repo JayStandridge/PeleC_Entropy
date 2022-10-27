@@ -52,6 +52,7 @@ pelec.plot_rhoy = 0
 pelec.plot_massfrac = 1
 pelec.write_hdf5_plots = true
 pelec.hdf5_compression = "ZFP_REVERSIBLE@reversible"
+ascent.plot_int = 2
 
 # PROBLEM PARAMETERS
 prob.pamb = 1013250.0  
