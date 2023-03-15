@@ -526,10 +526,96 @@ PeleC::variableSetUp()
     amrex::DeriveRec::TheSameBox);
   derive_lst.addComponent("magmom", desc_lst, State_Type, Density, NVAR);
 
+
+   //   // Entropy Inequality
+  amrex::Vector<std::string> var_names_EI(18);
+   var_names_EI[0] = "EITerm1";
+   var_names_EI[1] = "EITerm2";
+   var_names_EI[2] = "EITerm3";
+   var_names_EI[3] = "EITerm4";
+   var_names_EI[4] = "EI";
+   var_names_EI[5] = "AUX1";
+   var_names_EI[6] = "AUX2";
+   var_names_EI[7] = "AUX3";
+   var_names_EI[8] = "AUX4";
+   var_names_EI[9] = "EI(H2)";
+   var_names_EI[10]= "EI(O2)";
+   var_names_EI[11]= "EI(H20)";
+   var_names_EI[12]= "EI(H)";
+   var_names_EI[13]= "EI(O)";
+   var_names_EI[14]= "EI(OH)";
+   var_names_EI[15]= "EI(HO2)";
+   var_names_EI[16]= "EI(H2O2)";
+   var_names_EI[17]= "EI(N2)";
+
+   derive_lst.add(
+     "entropyInequality", amrex::IndexType::TheCellType(), 9+NUM_SPECIES, var_names_EI,
+     PeleC::pc_entropyInequality, amrex::DeriveRec::GrowBoxByOne);
+
+     // derive_lst.add(
+     // "entropyInequality", amrex::IndexType::TheCellType(), 1,
+     // pc_entropyInequality, amrex::DeriveRec::TheSameBox);
+   derive_lst.addComponent("entropyInequality", desc_lst, State_Type, Density, NVAR);
+
+
+
+  
+
+    // Velocity gradient tensor
+  amrex::Vector<std::string> var_names_testfun(16);
+  var_names_testfun[0] = "F";
+  var_names_testfun[1] = "FxExact";
+  var_names_testfun[2] = "FyExact";
+  var_names_testfun[3] = "FzExact";
+  var_names_testfun[4] = "FxCode";
+  var_names_testfun[5] = "FyCode";
+  var_names_testfun[6] = "FzCode";
+  var_names_testfun[7] = "FxDiff";
+  var_names_testfun[8] = "FyDiff";
+  var_names_testfun[9] = "FzDiff";
+  var_names_testfun[10]= "wi";
+  var_names_testfun[11]= "wj";
+  var_names_testfun[12]= "wk";
+  var_names_testfun[13]= "kp";
+  var_names_testfun[14]= "k";
+  var_names_testfun[15]= "km";
+
+  derive_lst.add(
+    "testfun", amrex::IndexType::TheCellType(), 16, var_names_testfun,
+    pc_dertestfun, amrex::DeriveRec::GrowBoxByOne);
+  derive_lst.addComponent("testfun", desc_lst, State_Type, Density, NVAR);
+
+
+
+
+
+ 
 #ifdef PELEC_USE_SOOT
   if (add_soot_src) {
     addSootDerivePlotVars(derive_lst, desc_lst);
   }
+
+  
+
+#ifdef AMREX_PARTICLES
+  // We want a derived type that corresponds to the number of particles
+  // in each cell.  We only intend to use it in plotfiles for debugging
+  // purposes. We'll actually set the values in writePlotFile().
+  derive_lst.add(
+    "particle_count", amrex::IndexType::TheCellType(), 1, pc_dernull,
+    amrex::DeriveRec::TheSameBox);
+  derive_lst.addComponent("particle_count", desc_lst, State_Type, Density, 1);
+
+  derive_lst.add(
+    "total_particle_count", amrex::IndexType::TheCellType(), 1, pc_dernull,
+    amrex::DeriveRec::TheSameBox);
+  derive_lst.addComponent(
+    "total_particle_count", desc_lst, State_Type, Density, 1);
+
+  derive_lst.add(
+    "particle_density", amrex::IndexType::TheCellType(), 1, pc_dernull,
+    amrex::DeriveRec::TheSameBox);
+  derive_lst.addComponent("particle_density", desc_lst, State_Type, Density, 1);
 #endif
 
   derive_lst.add(
@@ -584,6 +670,41 @@ PeleC::variableSetUp()
       amrex::DeriveRec::TheSameBox);
     derive_lst.addComponent("Pr_T", desc_lst, State_Type, Density, 1);
   }
+
+  // Velocity gradient tensor
+  amrex::Vector<std::string> var_names_vel_ders(9);
+  var_names_vel_ders[0] = "dudx";
+  var_names_vel_ders[1] = "dudy";
+  var_names_vel_ders[2] = "dudz";
+  var_names_vel_ders[3] = "dvdx";
+  var_names_vel_ders[4] = "dvdy";
+  var_names_vel_ders[5] = "dvdz";
+  var_names_vel_ders[6] = "dwdx";
+  var_names_vel_ders[7] = "dwdy";
+  var_names_vel_ders[8] = "dwdz";
+  derive_lst.add(
+    "vel_ders", amrex::IndexType::TheCellType(), 9, var_names_vel_ders,
+    pc_vel_ders, amrex::DeriveRec::GrowBoxByOne);
+  derive_lst.addComponent("vel_ders", desc_lst, State_Type, Density, NVAR);
+
+  // // State gradients
+  // amrex::Vector<std::string> var_state_names_ders(6);
+  // var_state_names_ders[0] = "drhodx";
+  // var_state_names_ders[1] = "drhody";
+  // var_state_names_ders[2] = "drhodz";
+  // var_state_names_ders[3] = "dTempdx";
+  // var_state_names_ders[4] = "dTempdy";
+  // var_state_names_ders[5] = "dTempdz";
+  // derive_lst.add(
+  //   "state_ders", amrex::IndexType::TheCellType(), 6,
+  //   var_state_names_ders, pc_state_ders, amrex::DeriveRec::GrowBoxByOne);
+  // derive_lst.addComponent("state_ders", desc_lst, State_Type, Density, NVAR);
+
+  // // Species Mass Frac gradients
+  // amrex::Vector<std::string> var_names_massfrac(NUM_SPECIES);
+  // for (int i = 0; i < NUM_SPECIES; i++) {
+  //   var_names_massfrac[i] = "Y(" + spec_names[i] + ")";
+  // }
 
   // MMS derives
 #ifdef PELEC_USE_MASA

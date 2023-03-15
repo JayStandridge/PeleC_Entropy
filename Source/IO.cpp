@@ -426,6 +426,38 @@ PeleC::setPlotVariables()
   } else {
     amrex::Amr::deleteDerivePlotVar("molefrac");
   }
+
+  bool plot_vel_ders = true;
+  pp.query("plot_vel_ders", plot_vel_ders);
+  if (plot_vel_ders) {
+    amrex::Amr::addDerivePlotVar("vel_ders");
+  } else {
+    amrex::Amr::deleteDerivePlotVar("vel_ders");
+  }
+
+  bool plot_testfun = true;
+  pp.query("plot_testfun", plot_testfun);
+  if (plot_testfun) {
+    amrex::Amr::addDerivePlotVar("testfun");
+  } else {
+    amrex::Amr::deleteDerivePlotVar("testfun");
+  }
+  
+  bool plot_ei = true;
+  pp.query("plot_ei", plot_ei);
+  if (plot_ei) {
+    amrex::Amr::addDerivePlotVar("entropyInequality");
+  } else {
+    amrex::Amr::deleteDerivePlotVar("entropyInequality");
+  }
+
+  // bool plot_state_ders = false;
+  // pp.query("plot_state_ders", plot_state_ders);
+  // if (plot_state_ders) {
+  //   amrex::Amr::addDerivePlotVar("state_ders");
+  // } else {
+  //   amrex::Amr::deleteDerivePlotVar("state_ders");
+  // }
 }
 
 void
