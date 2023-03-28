@@ -8,6 +8,9 @@
 #include<math.h>
 #include<stdlib.h>
 
+#include "PhysicsConstants.H"
+#include "TransportParams.H"
+
 void
 pc_dervelx(
   const amrex::Box& bx,
@@ -988,34 +991,88 @@ PeleC::pc_entropyInequality(
   auto gradYy       = local_gyy.array();
   amrex::FArrayBox local_gyz(bx, NUM_SPECIES, amrex::The_Async_Arena());
   auto gradYz       = local_gyz.array();
+  amrex::FArrayBox local_dti(bx, NUM_SPECIES, amrex::The_Async_Arena());
+  auto Dti          = local_dti.array();
+
+  amrex::FArrayBox local_gdkx(bx, NUM_SPECIES, amrex::The_Async_Arena());
+  auto dkx          = local_gdkx.array();
+  amrex::FArrayBox local_gdky(bx, NUM_SPECIES, amrex::The_Async_Arena());
+  auto dky          = local_gdky.array();
+  amrex::FArrayBox local_gdkz(bx, NUM_SPECIES, amrex::The_Async_Arena());
+  auto dkz          = local_gdkz.array();
+
+  amrex::FArrayBox local_gvkx(bx, NUM_SPECIES, amrex::The_Async_Arena());
+  auto vkx          = local_gvkx.array();
+  amrex::FArrayBox local_gvky(bx, NUM_SPECIES, amrex::The_Async_Arena());
+  auto vky          = local_gvky.array();
+  amrex::FArrayBox local_gvkz(bx, NUM_SPECIES, amrex::The_Async_Arena());
+  auto vkz          = local_gvkz.array();
+
+  amrex::FArrayBox local_gjkx(bx, NUM_SPECIES, amrex::The_Async_Arena());
+  auto jkx          = local_gjkx.array();
+  amrex::FArrayBox local_gjky(bx, NUM_SPECIES, amrex::The_Async_Arena());
+  auto jky          = local_gjky.array();
+  amrex::FArrayBox local_gjkz(bx, NUM_SPECIES, amrex::The_Async_Arena());
+  auto jkz          = local_gjkz.array();
+  
 
   amrex::FArrayBox local_gt(bx, 3, amrex::The_Async_Arena());
   auto gradT        = local_gt.array();
+  amrex::FArrayBox local_gp(bx, 3, amrex::The_Async_Arena());
+  auto gradP        = local_gp.array();
   amrex::FArrayBox local_vd(bx, 9, amrex::The_Async_Arena());
   auto vel_ders     = local_vd.array();
   amrex::FArrayBox local_lam(bx, 1, amrex::The_Async_Arena());
   auto lam_arr      = local_lam.array();
   amrex::FArrayBox local_dd(bx, NUM_SPECIES, amrex::The_Async_Arena());
   auto d_arr        = local_dd.array();
+  amrex::FArrayBox local_dij(bx, NUM_SPECIES*NUM_SPECIES, amrex::The_Async_Arena());
+  auto Dij       = local_dij.array();
+
+  amrex::FArrayBox local_dija(bx, NUM_SPECIES*NUM_SPECIES, amrex::The_Async_Arena());
+  auto Dija       = local_dija.array();
+
+  amrex::FArrayBox local_omega_d(bx,1, amrex::The_Async_Arena());
+  auto omega_d       = local_omega_d.array();
+  
+  amrex::FArrayBox local_logt(bx, 3, amrex::The_Async_Arena());
+  auto logt       = local_logt.array();
 
   amrex::FArrayBox local_ct(bx, 1, amrex::The_Async_Arena());
   auto c_tot        = local_ct.array();
   amrex::FArrayBox local_mmm(bx, 1, amrex::The_Async_Arena());
   auto mmm          = local_mmm.array();
 
+  // CONTROLS
+  const bool do_soret             = false;
+  const bool do_dufour            = false;
+  const bool do_barodiffusion     = true;
+  const bool do_enthalpy_diffusion = true;
 
   //Stole this from pc_derdiffusivity, will need mu, k, as well as ddiag later on
   auto const* ltransparm = trans_parms.device_trans_parm();
 
 
   //Get molecular weight/ inverse molecuilar weight prepared
-  amrex::Real mw[NUM_SPECIES]  = {0};
-  amrex::Real imw[NUM_SPECIES] = {0};
+  amrex::Real mw[NUM_SPECIES]  = {0.0};
+  amrex::Real imw[NUM_SPECIES] = {0.0};
+  amrex::Real eps[NUM_SPECIES]  = {0.0};
+  amrex::Real sig[NUM_SPECIES] = {0.0};
+  amrex::Real eps_ij[NUM_SPECIES][NUM_SPECIES]  = {0.0};
+  amrex::Real sig_ij[NUM_SPECIES][NUM_SPECIES]  = {0.0};
   auto eos = pele::physics::PhysicsType::eos();
   eos.inv_molecular_weight(imw);
   eos.molecular_weight(mw);
-
-
+  egtransetEPS(eps);
+  egtransetSIG(sig);
+  
+  for(int i =0; i<NUM_SPECIES;i++){
+    for(int j=0; j<NUM_SPECIES;j++){
+      eps_ij[i][j]=pow(eps[i]*eps[j],.5);
+      sig_ij[i][j]=.5*(sig[i]+sig[j]);
+    }
+  }
+  
 
   // Get flow quantities that I do not need derivatives of
   amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k) noexcept {
@@ -1038,21 +1095,35 @@ PeleC::pc_entropyInequality(
 			   auto trans = pele::physics::PhysicsType::transport();
 			   amrex::Real mu = 0.0, lam = 0.0, dum1 = 0.0;
 			   const bool get_xi = false, get_mu = true, get_lam = true,
-			     get_Ddiag = true;
+			     get_Ddiag = true, get_chi = false;
 			   trans.transport(
-					   get_xi, get_mu, get_lam, get_Ddiag, T, rho, massfrac, ddiag, mu, dum1,
+					   get_xi, get_mu, get_lam, get_Ddiag, get_chi, T, rho,
+					   massfrac, ddiag, nullptr, mu, dum1,
 					   lam, ltransparm);
 			   mu_arr(i, j, k) = mu;
 			   lam_arr(i, j, k) = lam;
+			   amrex::Real temp1 = 0.0;
+			   amrex::Real temp2 = 0.0;
+
+			   for (int n = 0; n< NUM_SPECIES; n++){
+			     temp1 += pow(mw[n],.511) * molefrac[n];
+			     temp2 += pow(mw[n],.489) * molefrac[n];
+			   }
 			   for (int n = 0; n < NUM_SPECIES; n++) {
 			     d_arr(i, j, k, n) = ddiag[n];
+			     if (do_soret){
+			       Dti(i,j,k,n) = -2.59 * pow(10,-7) * pow(T,.659) * (mw[n] * molefrac[n] / temp1 - massfrac[n]) * (temp1 / temp2);
+			     } else {
+			       Dti(i,j,k,n) = 0.0;
+			     }
 			   }
+			   
 			 });
   
   
   // Declaring gbx arrays that I will need for the gradient calculations later
   const amrex::Box& gbx = amrex::grow(bx, 1);
-  amrex::FArrayBox glocal(gbx, 4, amrex::The_Async_Arena());
+  amrex::FArrayBox glocal(gbx, 5, amrex::The_Async_Arena());
   auto larr = glocal.array();
   amrex::FArrayBox glocalx(gbx, NUM_SPECIES, amrex::The_Async_Arena());
   auto specX= glocalx.array();
@@ -1092,6 +1163,9 @@ PeleC::pc_entropyInequality(
 			    larr(i, j, k, 2) = dat(i, j, k, UMZ) * rhoInv;
 			    // Temperature also added
 			    larr(i, j, k, 3) = dat(i, j, k, UTEMP);
+			    amrex::Real pressure;
+			    eos.RTY2P(dat(i,j,k,URHO),larr(i,j,k,3), mass, pressure);
+			    larr(i, j, k, 4) = pressure;
 			    
 			  });
   
@@ -1128,6 +1202,10 @@ PeleC::pc_entropyInequality(
   			   gradT(i, j, k, 1) = wj * (larr(i, jp, k, 3) - larr(i, jm, k, 3)) / dy; // dTdy
   			   gradT(i, j, k, 2) = wk * (larr(i, j, kp, 3) - larr(i, j, km, 3)) / dz; // dTdz
 
+			   gradP(i, j, k, 0) = wi * (larr(ip, j, k, 4) - larr(im, j, k, 4)) / dx; // dTdx
+  			   gradP(i, j, k, 1) = wj * (larr(i, jp, k, 4) - larr(i, jm, k, 4)) / dy; // dTdy
+  			   gradP(i, j, k, 2) = wk * (larr(i, j, kp, 4) - larr(i, j, km, 4)) / dz; // dTdz
+
 			   for (int n = 0; n < NUM_SPECIES; n++) {
 			      gradXx(i, j, k, n) = wi * (specX(ip, j, k, n) - specX(im, j, k, n)) / dx; // dXdx
 			      gradXy(i, j, k, n) = wj * (specX(i, jp, k, n) - specX(i, jm, k, n)) / dy; // dXdy
@@ -1158,36 +1236,220 @@ PeleC::pc_entropyInequality(
 			   entropyInequality(i,j,k,6)=0; //AUX2
 			   entropyInequality(i,j,k,7)=0; //AUX3
 			   float sden;
+			   amrex::Real barodiffusion = 0.0;
+			   if (do_barodiffusion) {
+			     barodiffusion = 1.0;
+			   }
+			   // Diffusion driving force
+			   for (int n = 0; n < NUM_SPECIES; n++) {
+			     dkx(i,j,k,n) = gradXx(i,j,k,n) + barodiffusion * (specX(i,j,k,n) - specY(i,j,k,n))*gradP(i,j,k,0)/larr(i,j,k,4);
+			     dky(i,j,k,n) = gradXy(i,j,k,n) + barodiffusion * (specX(i,j,k,n) - specY(i,j,k,n))*gradP(i,j,k,1)/larr(i,j,k,4);
+			     dkz(i,j,k,n) = gradXz(i,j,k,n) + barodiffusion * (specX(i,j,k,n) - specY(i,j,k,n))*gradP(i,j,k,2)/larr(i,j,k,4);
+			   }
+			   // Diffusion Velocity
+			   for (int n = 0; n < NUM_SPECIES; n++) {
+			     sden=std::max(specX(i,j,k,n),pow(10,-8));
+			     vkx(i,j,k,n) = -d_arr(i,j,k,n) * dkx(i,j,k,n) / sden;
+			     vky(i,j,k,n) = -d_arr(i,j,k,n) * dky(i,j,k,n) / sden;
+			     vkz(i,j,k,n) = -d_arr(i,j,k,n) * dkz(i,j,k,n) / sden;
+			   }
+			   if (do_soret) {
+			     for (int n = 0; n < NUM_SPECIES; n++) {
+			       sden=std::max(specY(i,j,k,n),pow(10,-8));
+			       vkx(i,j,k,n) -= Dti(i,j,k,n) * gradT(i,j,k,0) / ( dat(i,j,k,URHO) * sden * larr(i,j,k,3));
+			       vky(i,j,k,n) -= Dti(i,j,k,n) * gradT(i,j,k,1) / ( dat(i,j,k,URHO) * sden * larr(i,j,k,3));
+			       vkz(i,j,k,n) -= Dti(i,j,k,n) * gradT(i,j,k,2) / ( dat(i,j,k,URHO) * sden * larr(i,j,k,3));
+			     }
+			   }
+			   // multicomponent species flux
+			   for (int n = 0; n < NUM_SPECIES; n++) {
+			     jkx(i,j,k,n) = dat(i,j,k,URHO) * specY(i,j,k,n) * vkx(i,j,k,n);
+			     jky(i,j,k,n) = dat(i,j,k,URHO) * specY(i,j,k,n) * vky(i,j,k,n);
+			     jkz(i,j,k,n) = dat(i,j,k,URHO) * specY(i,j,k,n) * vkz(i,j,k,n);
+			   }
+
+			   
 			   for (int n = 0; n < NUM_SPECIES; n++) {
 			     sden=std::max(dat(i,j,k,UFS+n),pow(10,-8)); // No dividing by zero
-			     entropyInequality(i,j,k,5)+=gradXx(i,j,k,n)*d_arr(i,j,k,n)/sden;
-			     entropyInequality(i,j,k,6)+=gradXy(i,j,k,n)*d_arr(i,j,k,n)/sden;
-			     entropyInequality(i,j,k,7)+=gradXz(i,j,k,n)*d_arr(i,j,k,n)/sden;
+			     entropyInequality(i,j,k,5)+= dkx(i,j,k,n) * Dti(i,j,k,n)/sden;
+			     entropyInequality(i,j,k,6)+= dky(i,j,k,n) * Dti(i,j,k,n)/sden;
+			     entropyInequality(i,j,k,7)+= dkz(i,j,k,n) * Dti(i,j,k,n)/sden;
 			   }
 			   entropyInequality(i,j,k,5)*=-c_tot(i,j,k)*8314*larr(i,j,k,3);
 			   entropyInequality(i,j,k,6)*=-c_tot(i,j,k)*8314*larr(i,j,k,3);
 			   entropyInequality(i,j,k,7)*=-c_tot(i,j,k)*8314*larr(i,j,k,3);
+
+
+			   
+			   if ( do_enthalpy_diffusion ){
+			     amrex::Real h_specific[NUM_SPECIES] = {0.0};
+			     amrex::Real y_temp[NUM_SPECIES] = {0.0};
+			     for (int n = 0; n< NUM_SPECIES; n++) {
+			       for (int m = 0; m < NUM_SPECIES; m++) {
+				 y_temp[m] = 0.0;
+			       }
+			       y_temp[n] = 1.0;
+			       CKHBMS(larr(i,j,k,3),y_temp,h_specific[n]); //is in ergs/g
+			       h_specific[n] *= pow(10,-4); //ergs/g -> j/kg
+			       entropyInequality(i,j,k,5)+=h_specific[n]*jkx(i,j,k,n);
+			       entropyInequality(i,j,k,6)+=h_specific[n]*jky(i,j,k,n);
+			       entropyInequality(i,j,k,7)+=h_specific[n]*jkz(i,j,k,n);
+			     }
+			   }
+			   
 			   entropyInequality(i,j,k,5)-=lam_arr(i,j,k)*gradT(i,j,k,0);
 			   entropyInequality(i,j,k,6)-=lam_arr(i,j,k)*gradT(i,j,k,1);
 			   entropyInequality(i,j,k,7)-=lam_arr(i,j,k)*gradT(i,j,k,2);
+			   
 			   entropyInequality(i,j,k,1)=(entropyInequality(i,j,k,5)*gradT(i,j,k,0)+
 						       entropyInequality(i,j,k,6)*gradT(i,j,k,1)+
 						       entropyInequality(i,j,k,7)*gradT(i,j,k,2))/larr(i,j,k,3);
+			   // EITerm3
+			   // Start by getting the Dij matrix:
+			   logt(i,j,k,0) = std::log(larr(i,j,k,3));
+			   logt(i,j,k,1) = logt(i,j,k,0) * logt(i,j,k,0);
+			   logt(i,j,k,2) = logt(i,j,k,0) * logt(i,j,k,1);
+			   const amrex::Real scale = pele::physics::Constants::PATM / (pele::physics::Constants::RU * larr(i,j,k,3));
+
+			   for (int ii = 0; ii < NUM_SPECIES; ++ii)
+			     {
+			     for (int jj = 0; jj < NUM_SPECIES; ++jj)
+			       {
+			       const int four_idx_ij = 4 * (ii + NUM_SPECIES * jj);
+			       const amrex::Real dbintemp =
+				 ltransparm->fitdbin[four_idx_ij] +
+				 ltransparm->fitdbin[1 + four_idx_ij] * logt(i,j,k,0) +
+				 ltransparm->fitdbin[2 + four_idx_ij] * logt(i,j,k,1) +
+				 ltransparm->fitdbin[3 + four_idx_ij] * logt(i,j,k,2);
+			   Dij(i,j,k,ii+NUM_SPECIES*jj)=ltransparm->wt[ii] * std::exp(dbintemp) * scale;
+			     }
+			   }
+			   // Verify Dij matrix with an analytical expression from Fluent:
+			   amrex::Real massfrac[NUM_SPECIES];
+			   for (int n = 0; n < NUM_SPECIES; n++) {
+			     massfrac[n] = dat(i, j, k, UFS + n) * rhoInv;
+			   }
+			   amrex::Real pabs;
+			   eos.RTY2P(dat(i,j,k,URHO),larr(i,j,k,3), massfrac, pabs);
+			   for (int ii = 0; ii < NUM_SPECIES; ++ii)
+			     {
+			       for (int jj = 0; jj < NUM_SPECIES; ++jj)
+				 {
+				   amrex::Real t_star=larr(i,j,k,3)*pow(eps_ij[ii][jj],-1);
+				   omega_d(i,j,k)=1.16145*pow(t_star,-.14874) +
+				     .52487*std::exp(-.7732*t_star) +
+				     2.16178*std::exp(-2.43787*t_star);
+				   Dija(i,j,k,ii+NUM_SPECIES*jj) = 0.0188*pow( pow(larr(i,j,k,3),3) * (imw[ii] + imw[jj])  , .5) /
+				     (pow(sig_ij[ii][jj],2)*omega_d(i,j,k) * pabs);
+				   
+				 }
+			     }
+			   // Now that we are done with the energy flux vector, we will construct the
+			   // multicomponent species flux. Starting with the implementation from Kee and Warnatz (1986)
+			   
+			   entropyInequality(i,j,k,2) = 0;
+			   
+			   for (int n = 0; n < NUM_SPECIES-1; n++) {
+			     sden=std::max(dat(i,j,k,UFS+n),pow(10,-8)); // No dividing by zero
+			     entropyInequality(i,j,k,2) += jkx(i,j,k,n)*(dkx(i,j,k,n) / sden - dkx(i,j,k,NUM_SPECIES-1) / dat(i,j,k,UFS+NUM_SPECIES-1));
+			     entropyInequality(i,j,k,2) += jky(i,j,k,n)*(dky(i,j,k,n) / sden - dky(i,j,k,NUM_SPECIES-1) / dat(i,j,k,UFS+NUM_SPECIES-1));
+			     entropyInequality(i,j,k,2) += jkz(i,j,k,n)*(dkz(i,j,k,n) / sden - dkz(i,j,k,NUM_SPECIES-1) / dat(i,j,k,UFS+NUM_SPECIES-1));
+			   }
+
+			   entropyInequality(i,j,k,2) *= c_tot(i,j,k) * pele::physics::Constants::RU * larr(i,j,k,3);
+			   
+			   // EITERM4
+			   amrex::Real tc[5] = {0.0};
+			   amrex::Real gibbs_fe[NUM_SPECIES] = {0.0};
+			   amrex::Real prod_rate[NUM_SPECIES] = {0.0};
+			   tc[1] = larr(i,j,k,3);
+			   tc[0] = std::log(tc[1]);
+			   tc[2] = pow(tc[1],2);
+			   tc[3] = pow(tc[1],3);
+			   tc[4] = pow(tc[1],4);
+			   gibbs(gibbs_fe,tc);
+			   // Get chemical potential, or molar gibbs
+			   for (int n = 0; n < NUM_SPECIES; n++) {
+			     gibbs_fe[n] *= pele::physics::Constants::RU * larr(i,j,k,3) * mw[n] * pow(10,-7);
+			   }
+			   // Get rate of production of each species
+			   CKWYR(dat(i,j,k,URHO), larr(i,j,k,3), massfrac, prod_rate);
+			   // prod rate is in mole/(cm^3 s ), need to convert to mole/(m^3 s)
+			   for (int n = 0; n < NUM_SPECIES; n++) {
+			     prod_rate[n] *=  pow(10,6);
+			   }
+			   //Calculate fourth term
+			   for (int n = 0; n < NUM_SPECIES; n++) {
+			     entropyInequality(i,j,k,3) += prod_rate[n] * gibbs_fe[n];
+			   }
+
+			   // Sum of all terms
+			   entropyInequality(i,j,k,4) = entropyInequality(i,j,k,0) +
+			                                entropyInequality(i,j,k,1) +
+			                                entropyInequality(i,j,k,2) +
+			                                entropyInequality(i,j,k,3);
 			   
 			   //Check magnitude of mole fraction gradient, temporary
 			   for (int n = 0; n < NUM_SPECIES; n++) {
-			     entropyInequality(i,j,k,9+n)=pow(pow(gradXx(i,j,k,n),2)
-							      +pow(gradXy(i,j,k,n),2)
-							      +pow(gradXz(i,j,k,n),2),.5)/dat(i,j,k,UFS+n); 
+			     entropyInequality(i,j,k,9+n)=gibbs_fe[n] * prod_rate[n]; 
 
 			     
 			   }
 
 			   
 			   
-    });
+			   });
+    amrex::Real EImin[5] = {0.0};
+    amrex::Real EImax[5] = {0.0};
+    // amrex::FArrayBox EITERM1bx(bx, 1, amrex::The_Async_Arena());
+    // auto EITERM1   = EITERM1bx.array();
+    // amrex::FArrayBox EITERM2bx(bx, 1, amrex::The_Async_Arena());
+    // auto EITERM2   = EITERM2bx.array();
+    // amrex::FArrayBox EITERM3bx(bx, 1, amrex::The_Async_Arena());
+    // auto EITERM3   = EITERM3bx.array();
+    // amrex::FArrayBox EITERM4bx(bx, 1, amrex::The_Async_Arena());
+    // auto EITERM4   = EITERM4bx.array();
+    // amrex::FArrayBox EITOTALbx(bx, 1, amrex::The_Async_Arena());
+    // auto EITOTAL   = EITOTALbx.array();
+    amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k) noexcept {
+			     amrex::Real EImin[5] = {0.0};
+			     amrex::Real EImax[5] = {0.0};
+			     // EITERM1(i,j,k) = entropyInequality(i,j,k,0);
+			     // EITERM2(i,j,k) = entropyInequality(i,j,k,1);
+			     // EITERM3(i,j,k) = entropyInequality(i,j,k,2);
+			     // EITERM4(i,j,k) = entropyInequality(i,j,k,3);
+			     // EITOTAL(i,j,k) = entropyInequality(i,j,k,4);
+			     for (int n = 0; n < 5; n++) {
+			       if( EImin[n] > entropyInequality(i,j,k,n)) {
+				 EImin[n] = entropyInequality(i,j,k,n);
+			       }
+			       if( EImax[n] < entropyInequality(i,j,k,n)) {
+				 EImax[n] = entropyInequality(i,j,k,n);
+			       }
+			     }
+			     
+			     
+			     
+			   });
+    
 
-   }
+			     
+    std::cout << "EITERM1 min = " << EImin[0] << std ::endl;
+    std::cout << "EITERM1 max = " << EImax[0] << std ::endl;
+    std::cout << "EITERM2 min = " << EImin[1] << std ::endl;
+    std::cout << "EITERM2 max = " << EImax[1] << std ::endl;
+    std::cout << "EITERM3 min = " << EImin[2] << std ::endl;
+    std::cout << "EITERM3 max = " << EImax[2] << std ::endl;
+    std::cout << "EITERM4 min = " << EImin[3] << std ::endl;
+    std::cout << "EITERM4 max = " << EImax[3] << std ::endl;
+    std::cout << "EITOTAL min = " << EImin[4] << std ::endl;
+    std::cout << "EITOTAL max = " << EImax[4] << std ::endl;
+
+      
+
+    
+
+}
 
 
 

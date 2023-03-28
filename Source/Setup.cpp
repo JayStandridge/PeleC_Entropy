@@ -588,13 +588,12 @@ PeleC::variableSetUp()
 
 
 
-
  
 #ifdef PELEC_USE_SOOT
   if (add_soot_src) {
     addSootDerivePlotVars(derive_lst, desc_lst);
   }
-
+#endif
   
 
 #ifdef AMREX_PARTICLES
