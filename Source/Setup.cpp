@@ -528,7 +528,7 @@ PeleC::variableSetUp()
 
 
    //   // Entropy Inequality
-  amrex::Vector<std::string> var_names_EI(18);
+  amrex::Vector<std::string> var_names_EI(9+NUM_SPECIES);
    var_names_EI[0] = "EITerm1";
    var_names_EI[1] = "EITerm2";
    var_names_EI[2] = "EITerm3";
@@ -538,15 +538,18 @@ PeleC::variableSetUp()
    var_names_EI[6] = "AUX2";
    var_names_EI[7] = "AUX3";
    var_names_EI[8] = "AUX4";
-   var_names_EI[9] = "EI(H2)";
-   var_names_EI[10]= "EI(O2)";
-   var_names_EI[11]= "EI(H20)";
-   var_names_EI[12]= "EI(H)";
-   var_names_EI[13]= "EI(O)";
-   var_names_EI[14]= "EI(OH)";
-   var_names_EI[15]= "EI(HO2)";
-   var_names_EI[16]= "EI(H2O2)";
-   var_names_EI[17]= "EI(N2)";
+   for (int i = 0; i < NUM_SPECIES; i++) {
+    var_names_EI[9+i] = "EI(" + spec_names[i] + ")";
+  }
+   // var_names_EI[9] = "EI(H2)";
+   // var_names_EI[10]= "EI(O2)";
+   // var_names_EI[11]= "EI(H20)";
+   // var_names_EI[12]= "EI(H)";
+   // var_names_EI[13]= "EI(O)";
+   // var_names_EI[14]= "EI(OH)";
+   // var_names_EI[15]= "EI(HO2)";
+   // var_names_EI[16]= "EI(H2O2)";
+   // var_names_EI[17]= "EI(N2)";
 
    derive_lst.add(
      "entropyInequality", amrex::IndexType::TheCellType(), 9+NUM_SPECIES, var_names_EI,

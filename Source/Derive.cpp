@@ -1379,6 +1379,7 @@ PeleC::pc_entropyInequality(
 			     prod_rate[n] *=  pow(10,6);
 			   }
 			   //Calculate fourth term
+			   entropyInequality(i,j,k,3) = 0.0;
 			   for (int n = 0; n < NUM_SPECIES; n++) {
 			     entropyInequality(i,j,k,3) += prod_rate[n] * gibbs_fe[n];
 			   }
@@ -1391,7 +1392,7 @@ PeleC::pc_entropyInequality(
 			   
 			   //Check magnitude of mole fraction gradient, temporary
 			   for (int n = 0; n < NUM_SPECIES; n++) {
-			     entropyInequality(i,j,k,9+n)=gibbs_fe[n] * prod_rate[n]; 
+			     entropyInequality(i,j,k,9+n)= prod_rate[n] * gibbs_fe[n];
 
 			     
 			   }
@@ -1399,51 +1400,51 @@ PeleC::pc_entropyInequality(
 			   
 			   
 			   });
-    amrex::Real EImin[5] = {0.0};
-    amrex::Real EImax[5] = {0.0};
-    // amrex::FArrayBox EITERM1bx(bx, 1, amrex::The_Async_Arena());
-    // auto EITERM1   = EITERM1bx.array();
-    // amrex::FArrayBox EITERM2bx(bx, 1, amrex::The_Async_Arena());
-    // auto EITERM2   = EITERM2bx.array();
-    // amrex::FArrayBox EITERM3bx(bx, 1, amrex::The_Async_Arena());
-    // auto EITERM3   = EITERM3bx.array();
-    // amrex::FArrayBox EITERM4bx(bx, 1, amrex::The_Async_Arena());
-    // auto EITERM4   = EITERM4bx.array();
-    // amrex::FArrayBox EITOTALbx(bx, 1, amrex::The_Async_Arena());
-    // auto EITOTAL   = EITOTALbx.array();
-    amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k) noexcept {
-			     amrex::Real EImin[5] = {0.0};
-			     amrex::Real EImax[5] = {0.0};
-			     // EITERM1(i,j,k) = entropyInequality(i,j,k,0);
-			     // EITERM2(i,j,k) = entropyInequality(i,j,k,1);
-			     // EITERM3(i,j,k) = entropyInequality(i,j,k,2);
-			     // EITERM4(i,j,k) = entropyInequality(i,j,k,3);
-			     // EITOTAL(i,j,k) = entropyInequality(i,j,k,4);
-			     for (int n = 0; n < 5; n++) {
-			       if( EImin[n] > entropyInequality(i,j,k,n)) {
-				 EImin[n] = entropyInequality(i,j,k,n);
-			       }
-			       if( EImax[n] < entropyInequality(i,j,k,n)) {
-				 EImax[n] = entropyInequality(i,j,k,n);
-			       }
-			     }
+    // amrex::Real EImin[5] = {0.0};
+    // amrex::Real EImax[5] = {0.0};
+    // // amrex::FArrayBox EITERM1bx(bx, 1, amrex::The_Async_Arena());
+    // // auto EITERM1   = EITERM1bx.array();
+    // // amrex::FArrayBox EITERM2bx(bx, 1, amrex::The_Async_Arena());
+    // // auto EITERM2   = EITERM2bx.array();
+    // // amrex::FArrayBox EITERM3bx(bx, 1, amrex::The_Async_Arena());
+    // // auto EITERM3   = EITERM3bx.array();
+    // // amrex::FArrayBox EITERM4bx(bx, 1, amrex::The_Async_Arena());
+    // // auto EITERM4   = EITERM4bx.array();
+    // // amrex::FArrayBox EITOTALbx(bx, 1, amrex::The_Async_Arena());
+    // // auto EITOTAL   = EITOTALbx.array();
+    // amrex::ParallelFor(bx, [&] AMREX_GPU_DEVICE(int i, int j, int k) noexcept {
+    // 			     // amrex::Real EImin[5] = {0.0};
+    // 			     // amrex::Real EImax[5] = {0.0};
+    // 			     // EITERM1(i,j,k) = entropyInequality(i,j,k,0);
+    // 			     // EITERM2(i,j,k) = entropyInequality(i,j,k,1);
+    // 			     // EITERM3(i,j,k) = entropyInequality(i,j,k,2);
+    // 			     // EITERM4(i,j,k) = entropyInequality(i,j,k,3);
+    // 			     // EITOTAL(i,j,k) = entropyInequality(i,j,k,4);
+    // 			     for (int n = 0; n < 5; n++) {
+    // 			       if( EImin[n] > entropyInequality(i,j,k,n)) {
+    // 				 EImin[n] = entropyInequality(i,j,k,n);
+    // 			       }
+    // 			       if( EImax[n] < entropyInequality(i,j,k,n)) {
+    // 				 EImax[n] = entropyInequality(i,j,k,n);
+    // 			       }
+    // 			     }
 			     
 			     
 			     
-			   });
+    // 			   });
     
 
 			     
-    std::cout << "EITERM1 min = " << EImin[0] << std ::endl;
-    std::cout << "EITERM1 max = " << EImax[0] << std ::endl;
-    std::cout << "EITERM2 min = " << EImin[1] << std ::endl;
-    std::cout << "EITERM2 max = " << EImax[1] << std ::endl;
-    std::cout << "EITERM3 min = " << EImin[2] << std ::endl;
-    std::cout << "EITERM3 max = " << EImax[2] << std ::endl;
-    std::cout << "EITERM4 min = " << EImin[3] << std ::endl;
-    std::cout << "EITERM4 max = " << EImax[3] << std ::endl;
-    std::cout << "EITOTAL min = " << EImin[4] << std ::endl;
-    std::cout << "EITOTAL max = " << EImax[4] << std ::endl;
+    // std::cout << "EITERM1 min = " << EImin[0] << std ::endl;
+    // std::cout << "EITERM1 max = " << EImax[0] << std ::endl;
+    // std::cout << "EITERM2 min = " << EImin[1] << std ::endl;
+    // std::cout << "EITERM2 max = " << EImax[1] << std ::endl;
+    // std::cout << "EITERM3 min = " << EImin[2] << std ::endl;
+    // std::cout << "EITERM3 max = " << EImax[2] << std ::endl;
+    // std::cout << "EITERM4 min = " << EImin[3] << std ::endl;
+    // std::cout << "EITERM4 max = " << EImax[3] << std ::endl;
+    // std::cout << "EITOTAL min = " << EImin[4] << std ::endl;
+    // std::cout << "EITOTAL max = " << EImax[4] << std ::endl;
 
       
 
