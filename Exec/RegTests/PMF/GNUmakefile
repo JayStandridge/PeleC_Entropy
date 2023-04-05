@@ -12,8 +12,8 @@ MEM_PROFILE = FALSE
 USE_GPROF = FALSE
 
 # Performance
-USE_MPI = FALSE
-USE_OMP = FALSE
+USE_MPI = TRUE
+USE_OMP = TRUE
 USE_CUDA = FALSE
 USE_HIP = FALSE
 USE_SYCL = FALSE
@@ -26,7 +26,7 @@ THREAD_SANITIZER = FALSE
 # PeleC
 USE_MASA = FALSE
 Eos_Model := Fuego
-Chemistry_Model := LiDryer
+Chemistry_Model := dodecane_lu
 Transport_Model := Simple
 
 # GNU Make
