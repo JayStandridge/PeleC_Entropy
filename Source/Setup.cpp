@@ -528,7 +528,7 @@ PeleC::variableSetUp()
 
 
    //   // Entropy Inequality
-  amrex::Vector<std::string> var_names_EI(9+NUM_SPECIES);
+  amrex::Vector<std::string> var_names_EI(9+NUM_SPECIES+NUM_REACTIONS);
    var_names_EI[0] = "EITerm1";
    var_names_EI[1] = "EITerm2";
    var_names_EI[2] = "EITerm3";
@@ -540,6 +540,9 @@ PeleC::variableSetUp()
    var_names_EI[8] = "AUX4";
    for (int i = 0; i < NUM_SPECIES; i++) {
     var_names_EI[9+i] = "EI(" + spec_names[i] + ")";
+  }
+   for (int i = 0; i < NUM_REACTIONS; i++) {
+     var_names_EI[9+i] = "EI(Reaction " + std::to_string(i) + ")";
   }
    // var_names_EI[9] = "EI(H2)";
    // var_names_EI[10]= "EI(O2)";

@@ -10,6 +10,7 @@
 
 #include "PhysicsConstants.H"
 #include "TransportParams.H"
+#include "mechanism.cpp"
 
 void
 pc_dervelx(
@@ -1362,6 +1363,7 @@ PeleC::pc_entropyInequality(
 			   amrex::Real tc[5] = {0.0};
 			   amrex::Real gibbs_fe[NUM_SPECIES] = {0.0};
 			   amrex::Real prod_rate[NUM_SPECIES] = {0.0};
+			   
 			   tc[1] = larr(i,j,k,3);
 			   tc[0] = std::log(tc[1]);
 			   tc[2] = pow(tc[1],2);
@@ -1385,6 +1387,7 @@ PeleC::pc_entropyInequality(
 			   }
 
 			   // Sum of all terms
+			   
 			   entropyInequality(i,j,k,4) = entropyInequality(i,j,k,0) +
 			                                entropyInequality(i,j,k,1) +
 			                                entropyInequality(i,j,k,2) +
@@ -1393,62 +1396,43 @@ PeleC::pc_entropyInequality(
 			   //Check magnitude of mole fraction gradient, temporary
 			   for (int n = 0; n < NUM_SPECIES; n++) {
 			     entropyInequality(i,j,k,9+n)= prod_rate[n] * gibbs_fe[n];
+			     
 
 			     
+			   }
+			   amrex::Real species_concentration[NUM_SPECIES] = {0.0};
+			   amrex::Real q_f[NUM_REACTIONS] = {0.0};
+			   amrex::Real q_r[NUM_REACTIONS] = {0.0};
+			   amrex::Real wdot[NUM_REACTIONS] = {0.0};
+			   amrex::Real rho = dat(i, j, k, 0);
+			   int nspec = 0;
+			   int* nspecp = &nspec;
+			   int temp;
+			   CKINU(0, nspecp, &temp, &temp);
+			   int ki[nspec] = {0};
+			   int nu[nspec] = {0};
+			   
+			   
+			   // get concentration in SI units
+			   for (int i = 0; i < 9; i++) { 
+			     species_concentration[i] = 1e6 * rho * massfrac[i] * imw[i];
+			   }
+			   progressRateFR(q_f, q_r, species_concentration, tc[1]);
+
+
+			   
+			   
+			   for (int n = 0; n < NUM_REACTIONS; n++) {
+			     CKINU(&n, nspecp, ki, nu);
+			     entropyInequality(i,j,k,9+NUM_SPECIES+n)=0;
+			     for (int m = 0; m < nspec; m++){
+			       entropyInequality(i,j,k,9+NUM_SPECIES+n)+= 1e6 * (q_f[n] - q_r[n]) * static_cast<double>(nu[m]) * gibbs_fe[ki[m]-1];
+			     }
 			   }
 
 			   
 			   
 			   });
-    // amrex::Real EImin[5] = {0.0};
-    // amrex::Real EImax[5] = {0.0};
-    // // amrex::FArrayBox EITERM1bx(bx, 1, amrex::The_Async_Arena());
-    // // auto EITERM1   = EITERM1bx.array();
-    // // amrex::FArrayBox EITERM2bx(bx, 1, amrex::The_Async_Arena());
-    // // auto EITERM2   = EITERM2bx.array();
-    // // amrex::FArrayBox EITERM3bx(bx, 1, amrex::The_Async_Arena());
-    // // auto EITERM3   = EITERM3bx.array();
-    // // amrex::FArrayBox EITERM4bx(bx, 1, amrex::The_Async_Arena());
-    // // auto EITERM4   = EITERM4bx.array();
-    // // amrex::FArrayBox EITOTALbx(bx, 1, amrex::The_Async_Arena());
-    // // auto EITOTAL   = EITOTALbx.array();
-    // amrex::ParallelFor(bx, [&] AMREX_GPU_DEVICE(int i, int j, int k) noexcept {
-    // 			     // amrex::Real EImin[5] = {0.0};
-    // 			     // amrex::Real EImax[5] = {0.0};
-    // 			     // EITERM1(i,j,k) = entropyInequality(i,j,k,0);
-    // 			     // EITERM2(i,j,k) = entropyInequality(i,j,k,1);
-    // 			     // EITERM3(i,j,k) = entropyInequality(i,j,k,2);
-    // 			     // EITERM4(i,j,k) = entropyInequality(i,j,k,3);
-    // 			     // EITOTAL(i,j,k) = entropyInequality(i,j,k,4);
-    // 			     for (int n = 0; n < 5; n++) {
-    // 			       if( EImin[n] > entropyInequality(i,j,k,n)) {
-    // 				 EImin[n] = entropyInequality(i,j,k,n);
-    // 			       }
-    // 			       if( EImax[n] < entropyInequality(i,j,k,n)) {
-    // 				 EImax[n] = entropyInequality(i,j,k,n);
-    // 			       }
-    // 			     }
-			     
-			     
-			     
-    // 			   });
-    
-
-			     
-    // std::cout << "EITERM1 min = " << EImin[0] << std ::endl;
-    // std::cout << "EITERM1 max = " << EImax[0] << std ::endl;
-    // std::cout << "EITERM2 min = " << EImin[1] << std ::endl;
-    // std::cout << "EITERM2 max = " << EImax[1] << std ::endl;
-    // std::cout << "EITERM3 min = " << EImin[2] << std ::endl;
-    // std::cout << "EITERM3 max = " << EImax[2] << std ::endl;
-    // std::cout << "EITERM4 min = " << EImin[3] << std ::endl;
-    // std::cout << "EITERM4 max = " << EImax[3] << std ::endl;
-    // std::cout << "EITOTAL min = " << EImin[4] << std ::endl;
-    // std::cout << "EITOTAL max = " << EImax[4] << std ::endl;
-
-      
-
-    
 
 }
 
