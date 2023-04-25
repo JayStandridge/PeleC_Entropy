@@ -10,7 +10,6 @@
 
 #include "PhysicsConstants.H"
 #include "TransportParams.H"
-#include "mechanism.cpp"
 
 void
 pc_dervelx(
@@ -1406,12 +1405,11 @@ PeleC::pc_entropyInequality(
 			   amrex::Real wdot[NUM_REACTIONS] = {0.0};
 			   amrex::Real rho = dat(i, j, k, 0);
 			   int nspec = 0;
-			   int* nspecp = &nspec;
-			   int temp;
-			   CKINU(0, nspecp, &temp, &temp);
+			   int* temp;
+			   int* temp2;
+			   CKINU(0, nspec, temp, temp2);
 			   int ki[nspec] = {0};
 			   int nu[nspec] = {0};
-			   
 			   
 			   // get concentration in SI units
 			   for (int i = 0; i < 9; i++) { 
@@ -1423,14 +1421,13 @@ PeleC::pc_entropyInequality(
 			   
 			   
 			   for (int n = 0; n < NUM_REACTIONS; n++) {
-			     CKINU(&n, nspecp, ki, nu);
+			     CKINU(n, nspec, ki, nu);
 			     entropyInequality(i,j,k,9+NUM_SPECIES+n)=0;
 			     for (int m = 0; m < nspec; m++){
 			       entropyInequality(i,j,k,9+NUM_SPECIES+n)+= 1e6 * (q_f[n] - q_r[n]) * static_cast<double>(nu[m]) * gibbs_fe[ki[m]-1];
 			     }
 			   }
 
-			   
 			   
 			   });
 
