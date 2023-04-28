@@ -5,12 +5,6 @@
 #include "PeleC.H"
 #include "IndexDefines.H"
 
-#include<math.h>
-#include<stdlib.h>
-
-#include "PhysicsConstants.H"
-#include "TransportParams.H"
-
 void
 pc_dervelx(
   const amrex::Box& bx,
@@ -531,6 +525,7 @@ pc_derentropy(
   const int* /*bcrec*/,
   const int /*level*/)
 {
+  // auto const dat = datfab.const_array();
   auto sfab = derfab.array();
 
   amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k) noexcept {
@@ -593,6 +588,7 @@ pc_derpres(
     const amrex::Real rho = dat(i, j, k, URHO);
     const amrex::Real rhoInv = 1.0 / rho;
     amrex::Real T = dat(i, j, k, UTEMP);
+    // amrex::Real e = dat(i, j, k, UEINT) * rhoInv;
     amrex::Real p;
     amrex::Real massfrac[NUM_SPECIES];
     for (int n = 0; n < NUM_SPECIES; ++n) {
@@ -769,10 +765,10 @@ PeleC::pc_derviscosity(
     auto trans = pele::physics::PhysicsType::transport();
     amrex::Real mu = 0.0, dum1 = 0.0, dum2 = 0.0;
     const bool get_xi = false, get_mu = true, get_lam = false,
-               get_Ddiag = false, get_chi = false;
+               get_Ddiag = false;
     trans.transport(
-      get_xi, get_mu, get_lam, get_Ddiag, get_chi, T, rho, massfrac, nullptr,
-      nullptr, mu, dum1, dum2, ltransparm);
+      get_xi, get_mu, get_lam, get_Ddiag, T, rho, massfrac, nullptr, mu, dum1,
+      dum2, ltransparm);
     mu_arr(i, j, k) = mu;
   });
 }
@@ -805,10 +801,10 @@ PeleC::pc_derbulkviscosity(
     auto trans = pele::physics::PhysicsType::transport();
     amrex::Real xi = 0.0, dum1 = 0.0, dum2 = 0.0;
     const bool get_xi = true, get_mu = false, get_lam = false,
-               get_Ddiag = false, get_chi = false;
+               get_Ddiag = false;
     trans.transport(
-      get_xi, get_mu, get_lam, get_Ddiag, get_chi, T, rho, massfrac, nullptr,
-      nullptr, dum1, xi, dum2, ltransparm);
+      get_xi, get_mu, get_lam, get_Ddiag, T, rho, massfrac, nullptr, dum1, xi,
+      dum2, ltransparm);
     xi_arr(i, j, k) = xi;
   });
 }
@@ -841,10 +837,10 @@ PeleC::pc_derconductivity(
     auto trans = pele::physics::PhysicsType::transport();
     amrex::Real lam = 0.0, dum1 = 0.0, dum2 = 0.0;
     const bool get_xi = false, get_mu = false, get_lam = true,
-               get_Ddiag = false, get_chi = false;
+               get_Ddiag = false;
     trans.transport(
-      get_xi, get_mu, get_lam, get_Ddiag, get_chi, T, rho, massfrac, nullptr,
-      nullptr, dum1, dum2, lam, ltransparm);
+      get_xi, get_mu, get_lam, get_Ddiag, T, rho, massfrac, nullptr, dum1, dum2,
+      lam, ltransparm);
     lam_arr(i, j, k) = lam;
   });
 }
@@ -878,10 +874,10 @@ PeleC::pc_derdiffusivity(
     auto trans = pele::physics::PhysicsType::transport();
     amrex::Real dum1 = 0.0, dum2 = 0.0, dum3 = 0.0;
     const bool get_xi = false, get_mu = false, get_lam = false,
-               get_Ddiag = true, get_chi = false;
+               get_Ddiag = true;
     trans.transport(
-      get_xi, get_mu, get_lam, get_Ddiag, get_chi, T, rho, massfrac, ddiag,
-      nullptr, dum1, dum2, dum3, ltransparm);
+      get_xi, get_mu, get_lam, get_Ddiag, T, rho, massfrac, ddiag, dum1, dum2,
+      dum3, ltransparm);
     for (int n = 0; n < NUM_SPECIES; n++) {
       d_arr(i, j, k, n) = ddiag[n];
     }
@@ -937,7 +933,6 @@ pc_vel_ders(
 			   AMREX_D_TERM(const amrex::Real wi = get_weight(im, ip);
 					, const amrex::Real wj = get_weight(jm, jp);
 					, const amrex::Real wk = get_weight(km, kp););
-			   
 
 			   vel_ders(i, j, k, 0) = wi * (larr(ip, j, k, 0) - larr(im, j, k, 0)) / dx; // dudx
 			   vel_ders(i, j, k, 1) = wj * (larr(i, jp, k, 0) - larr(i, jm, k, 0)) / dy; // dudy
@@ -952,513 +947,6 @@ pc_vel_ders(
 			   vel_ders(i, j, k, 8) = wk * (larr(i, j, kp, 2) - larr(i, j, km, 2)) / dz; // dwdz
 			 });
 }
-
-
-
-
-
-
-
-void
-PeleC::pc_entropyInequality(
-  const amrex::Box& bx,
-  amrex::FArrayBox& derfab,
-  int /*dcomp*/,
-  int /*ncomp*/,
-  const amrex::FArrayBox& datfab,
-  const amrex::Geometry& geomdata,
-  amrex::Real /*time*/,
-  const int* /*bcrec*/,
-  const int /*level*/)
-{
-  auto entropyInequality = derfab.array();
-  // Declaring dat
-  auto const dat = datfab.const_array();
-  // Declaring local arrays
-  amrex::FArrayBox local_mu(bx, 1, amrex::The_Async_Arena());
-  auto mu_arr       = local_mu.array();
-  amrex::FArrayBox local_divu(bx, 1, amrex::The_Async_Arena());
-  auto divu         = local_divu.array();
-  amrex::FArrayBox local_gxx(bx, NUM_SPECIES, amrex::The_Async_Arena());
-  auto gradXx       = local_gxx.array();
-  amrex::FArrayBox local_gxy(bx, NUM_SPECIES, amrex::The_Async_Arena());
-  auto gradXy       = local_gxy.array();
-  amrex::FArrayBox local_gxz(bx, NUM_SPECIES, amrex::The_Async_Arena());
-  auto gradXz       = local_gxz.array();
-  amrex::FArrayBox local_gyx(bx, NUM_SPECIES, amrex::The_Async_Arena());
-  auto gradYx       = local_gyx.array();
-  amrex::FArrayBox local_gyy(bx, NUM_SPECIES, amrex::The_Async_Arena());
-  auto gradYy       = local_gyy.array();
-  amrex::FArrayBox local_gyz(bx, NUM_SPECIES, amrex::The_Async_Arena());
-  auto gradYz       = local_gyz.array();
-  amrex::FArrayBox local_dti(bx, NUM_SPECIES, amrex::The_Async_Arena());
-  auto Dti          = local_dti.array();
-
-  amrex::FArrayBox local_gdkx(bx, NUM_SPECIES, amrex::The_Async_Arena());
-  auto dkx          = local_gdkx.array();
-  amrex::FArrayBox local_gdky(bx, NUM_SPECIES, amrex::The_Async_Arena());
-  auto dky          = local_gdky.array();
-  amrex::FArrayBox local_gdkz(bx, NUM_SPECIES, amrex::The_Async_Arena());
-  auto dkz          = local_gdkz.array();
-
-  amrex::FArrayBox local_gvkx(bx, NUM_SPECIES, amrex::The_Async_Arena());
-  auto vkx          = local_gvkx.array();
-  amrex::FArrayBox local_gvky(bx, NUM_SPECIES, amrex::The_Async_Arena());
-  auto vky          = local_gvky.array();
-  amrex::FArrayBox local_gvkz(bx, NUM_SPECIES, amrex::The_Async_Arena());
-  auto vkz          = local_gvkz.array();
-
-  amrex::FArrayBox local_gjkx(bx, NUM_SPECIES, amrex::The_Async_Arena());
-  auto jkx          = local_gjkx.array();
-  amrex::FArrayBox local_gjky(bx, NUM_SPECIES, amrex::The_Async_Arena());
-  auto jky          = local_gjky.array();
-  amrex::FArrayBox local_gjkz(bx, NUM_SPECIES, amrex::The_Async_Arena());
-  auto jkz          = local_gjkz.array();
-  
-
-  amrex::FArrayBox local_gt(bx, 3, amrex::The_Async_Arena());
-  auto gradT        = local_gt.array();
-  amrex::FArrayBox local_gp(bx, 3, amrex::The_Async_Arena());
-  auto gradP        = local_gp.array();
-  amrex::FArrayBox local_vd(bx, 9, amrex::The_Async_Arena());
-  auto vel_ders     = local_vd.array();
-  amrex::FArrayBox local_lam(bx, 1, amrex::The_Async_Arena());
-  auto lam_arr      = local_lam.array();
-  amrex::FArrayBox local_dd(bx, NUM_SPECIES, amrex::The_Async_Arena());
-  auto d_arr        = local_dd.array();
-  amrex::FArrayBox local_dij(bx, NUM_SPECIES*NUM_SPECIES, amrex::The_Async_Arena());
-  auto Dij       = local_dij.array();
-
-  amrex::FArrayBox local_dija(bx, NUM_SPECIES*NUM_SPECIES, amrex::The_Async_Arena());
-  auto Dija       = local_dija.array();
-
-  amrex::FArrayBox local_omega_d(bx,1, amrex::The_Async_Arena());
-  auto omega_d       = local_omega_d.array();
-  
-  amrex::FArrayBox local_logt(bx, 3, amrex::The_Async_Arena());
-  auto logt       = local_logt.array();
-
-  amrex::FArrayBox local_ct(bx, 1, amrex::The_Async_Arena());
-  auto c_tot        = local_ct.array();
-  amrex::FArrayBox local_mmm(bx, 1, amrex::The_Async_Arena());
-  auto mmm          = local_mmm.array();
-
-  // CONTROLS
-  const bool do_soret             = false;
-  const bool do_dufour            = false;
-  const bool do_barodiffusion     = true;
-  const bool do_enthalpy_diffusion = true;
-
-  //Stole this from pc_derdiffusivity, will need mu, k, as well as ddiag later on
-  auto const* ltransparm = trans_parms.device_trans_parm();
-
-
-  //Get molecular weight/ inverse molecuilar weight prepared
-  amrex::Real mw[NUM_SPECIES]  = {0.0};
-  amrex::Real imw[NUM_SPECIES] = {0.0};
-  amrex::Real eps[NUM_SPECIES]  = {0.0};
-  amrex::Real sig[NUM_SPECIES] = {0.0};
-  amrex::Real eps_ij[NUM_SPECIES][NUM_SPECIES]  = {0.0};
-  amrex::Real sig_ij[NUM_SPECIES][NUM_SPECIES]  = {0.0};
-  auto eos = pele::physics::PhysicsType::eos();
-  eos.inv_molecular_weight(imw);
-  eos.molecular_weight(mw);
-  egtransetEPS(eps);
-  egtransetSIG(sig);
-  
-  for(int i =0; i<NUM_SPECIES;i++){
-    for(int j=0; j<NUM_SPECIES;j++){
-      eps_ij[i][j]=pow(eps[i]*eps[j],.5);
-      sig_ij[i][j]=.5*(sig[i]+sig[j]);
-    }
-  }
-  
-
-  // Get flow quantities that I do not need derivatives of
-  amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k) noexcept {
-			   amrex::Real massfrac[NUM_SPECIES] = {0};
-			   amrex::Real molefrac[NUM_SPECIES] = {0};
-			   const amrex::Real rho = dat(i, j, k, URHO);
-			   const amrex::Real rhoInv = 1.0 / rho;
-			   amrex::Real ddiag[NUM_SPECIES] = {0.0};
-			   amrex::Real imw_local[NUM_SPECIES] = {0.0};
-			   const amrex::Real T = dat(i, j, k, UTEMP);
-			   c_tot(i,j,k)=0;
-			   for (int n = 0; n < NUM_SPECIES; n++) {
-			     massfrac[n] = dat(i, j, k, UFS + n) * rhoInv;
-			     c_tot(i,j,k)+=dat(i,j,k,UFS+n)*imw[n];
-			   }
-			   eos.Y2X(massfrac, molefrac);
-			   for (int n = 0; n < NUM_SPECIES; n++) {
-			     mmm(i,j,k) += mw[n]*molefrac[n];
-			   }
-			   auto trans = pele::physics::PhysicsType::transport();
-			   amrex::Real mu = 0.0, lam = 0.0, dum1 = 0.0;
-			   const bool get_xi = false, get_mu = true, get_lam = true,
-			     get_Ddiag = true, get_chi = false;
-			   trans.transport(
-					   get_xi, get_mu, get_lam, get_Ddiag, get_chi, T, rho,
-					   massfrac, ddiag, nullptr, mu, dum1,
-					   lam, ltransparm);
-			   mu_arr(i, j, k) = mu;
-			   lam_arr(i, j, k) = lam;
-			   amrex::Real temp1 = 0.0;
-			   amrex::Real temp2 = 0.0;
-
-			   for (int n = 0; n< NUM_SPECIES; n++){
-			     temp1 += pow(mw[n],.511) * molefrac[n];
-			     temp2 += pow(mw[n],.489) * molefrac[n];
-			   }
-			   for (int n = 0; n < NUM_SPECIES; n++) {
-			     d_arr(i, j, k, n) = ddiag[n];
-			     if (do_soret){
-			       Dti(i,j,k,n) = -2.59 * pow(10,-7) * pow(T,.659) * (mw[n] * molefrac[n] / temp1 - massfrac[n]) * (temp1 / temp2);
-			     } else {
-			       Dti(i,j,k,n) = 0.0;
-			     }
-			   }
-			   
-			 });
-  
-  
-  // Declaring gbx arrays that I will need for the gradient calculations later
-  const amrex::Box& gbx = amrex::grow(bx, 1);
-  amrex::FArrayBox glocal(gbx, 5, amrex::The_Async_Arena());
-  auto larr = glocal.array();
-  amrex::FArrayBox glocalx(gbx, NUM_SPECIES, amrex::The_Async_Arena());
-  auto specX= glocalx.array();
-  amrex::FArrayBox glocaly(gbx, NUM_SPECIES, amrex::The_Async_Arena());
-  auto specY= glocaly.array();
-
-  // Stolen from @nickwimer 
-  const auto& flag_fab = amrex::getEBCellFlagFab(datfab);
-  const auto& typ = flag_fab.getType(bx);
-  if (typ == amrex::FabType::covered) {
-    derfab.setVal<amrex::RunOn::Device>(0.0, bx);
-    return;
-  }
-  const auto& flags = flag_fab.const_array();
-  const bool all_regular = typ == amrex::FabType::regular;
-
-
-  // Convert momentum to velocity.
-  amrex::ParallelFor(gbx, [=] AMREX_GPU_DEVICE(int i, int j, int k) noexcept {
-			    amrex::Real mass[NUM_SPECIES];
-			    amrex::Real mole[NUM_SPECIES];
-			    amrex::Real rhoInv = 1.0 / dat(i, j, k, URHO);
-
-
-			    // Section added to get mass/mole fraction gradients
-			    for (int n = 0; n < NUM_SPECIES; n++) {
-			      mass[n] = dat(i, j, k, UFS + n) * rhoInv;
-			    }
-			    eos.Y2X(mass, mole);
-	 
-			    for (int n = 0; n < NUM_SPECIES; n++) {
-			      specX(i, j, k, n) = mole[n];
-			      specY(i, j, k, n) = dat(i, j, k, UFS + n) * rhoInv;
-			    }
-			    larr(i, j, k, 0) = dat(i, j, k, UMX) * rhoInv;
-			    larr(i, j, k, 1) = dat(i, j, k, UMY) * rhoInv;
-			    larr(i, j, k, 2) = dat(i, j, k, UMZ) * rhoInv;
-			    // Temperature also added
-			    larr(i, j, k, 3) = dat(i, j, k, UTEMP);
-			    amrex::Real pressure;
-			    eos.RTY2P(dat(i,j,k,URHO),larr(i,j,k,3), mass, pressure);
-			    larr(i, j, k, 4) = pressure;
-			    
-			  });
-  
-  // As in @nickwimer branch
-  AMREX_D_TERM(const amrex::Real dx = geomdata.CellSize(0);
-               , const amrex::Real dy = geomdata.CellSize(1);
-               , const amrex::Real dz = geomdata.CellSize(2););
-  
-    amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k) noexcept {
-  			   AMREX_D_TERM(int im; int ip;, int jm; int jp;, int km; int kp;);
-  			   AMREX_D_TERM(get_idx(i, 0, all_regular, flags(i, j, k), im, ip);
-  			   		, get_idx(j, 1, all_regular, flags(i, j, k), jm, jp);
-  			   		, get_idx(k, 2, all_regular, flags(i, j, k), km, kp););
-  			   AMREX_D_TERM(const amrex::Real wi = get_weight(im, ip);
-  			   		, const amrex::Real wj = get_weight(jm, jp);
-  			   		, const amrex::Real wk = get_weight(km, kp););
-			   const amrex::Real rhoInv = 1.0 / dat(i, j, k, URHO);
-
-  			   vel_ders(i, j, k, 0) = wi * (larr(ip, j, k, 0) - larr(im, j, k, 0)) / dx; // dudx
-  			   vel_ders(i, j, k, 1) = wj * (larr(i, jp, k, 0) - larr(i, jm, k, 0)) / dy; // dudy
-  			   vel_ders(i, j, k, 2) = wk * (larr(i, j, kp, 0) - larr(i, j, km, 0)) / dz; // dudz
-
-  			   vel_ders(i, j, k, 3) = wi * (larr(ip, j, k, 1) - larr(im, j, k, 1)) / dx; // dvdx
-  			   vel_ders(i, j, k, 4) = wj * (larr(i, jp, k, 1) - larr(i, jm, k, 1)) / dy; // dvdy
-  			   vel_ders(i, j, k, 5) = wk * (larr(i, j, kp, 1) - larr(i, j, km, 1)) / dz; // dvdz
-
-  			   vel_ders(i, j, k, 6) = wi * (larr(ip, j, k, 2) - larr(im, j, k, 2)) / dx; // dwdx
-  			   vel_ders(i, j, k, 7) = wj * (larr(i, jp, k, 2) - larr(i, jm, k, 2)) / dy; // dwdy
-  			   vel_ders(i, j, k, 8) = wk * (larr(i, j, kp, 2) - larr(i, j, km, 2)) / dz; // dwdz
-
-			   // My code
-
-			   gradT(i, j, k, 0) = wi * (larr(ip, j, k, 3) - larr(im, j, k, 3)) / dx; // dTdx
-  			   gradT(i, j, k, 1) = wj * (larr(i, jp, k, 3) - larr(i, jm, k, 3)) / dy; // dTdy
-  			   gradT(i, j, k, 2) = wk * (larr(i, j, kp, 3) - larr(i, j, km, 3)) / dz; // dTdz
-
-			   gradP(i, j, k, 0) = wi * (larr(ip, j, k, 4) - larr(im, j, k, 4)) / dx; // dTdx
-  			   gradP(i, j, k, 1) = wj * (larr(i, jp, k, 4) - larr(i, jm, k, 4)) / dy; // dTdy
-  			   gradP(i, j, k, 2) = wk * (larr(i, j, kp, 4) - larr(i, j, km, 4)) / dz; // dTdz
-
-			   for (int n = 0; n < NUM_SPECIES; n++) {
-			      gradXx(i, j, k, n) = wi * (specX(ip, j, k, n) - specX(im, j, k, n)) / dx; // dXdx
-			      gradXy(i, j, k, n) = wj * (specX(i, jp, k, n) - specX(i, jm, k, n)) / dy; // dXdy
-			      gradXz(i, j, k, n) = wk * (specX(i, j, kp, n) - specX(i, j, km, n)) / dz; // dXdz
-			   }
-			   for (int n = 0; n < NUM_SPECIES; n++) {
-			      gradYx(i, j, k, n) = wi * (specY(ip, j, k, n) - specY(im, j, k, n)) / dx; // dYdx
-			      gradYy(i, j, k, n) = wj * (specY(i, jp, k, n) - specY(i, jm, k, n)) / dy; // dYdy
-			      gradYz(i, j, k, n) = wk * (specY(i, j, kp, n) - specY(i, j, km, n)) / dz; // dYdz
-			   }
-			   
-
-			   divu(i,j,k,0) = vel_ders(i, j, k, 0) + vel_ders(i, j, k, 4) + vel_ders(i, j, k, 8);
-
-			   // First term of differential entropy inequality
-			   //EIterm1
-			   entropyInequality(i,j,k,0)=(2/3*pow(divu(i,j,k),2)
-						      -2*( pow(vel_ders(i, j, k, 0),2)
-							   + pow(vel_ders(i, j, k, 4),2)
-							   +pow( vel_ders(i, j, k, 8),2))
-						      -(pow(vel_ders(i, j, k, 2) + vel_ders(i, j, k, 3),2)
-							+ pow(vel_ders(i, j, k, 2) + vel_ders(i, j, k, 6),2)
-							+ pow(vel_ders(i, j, k, 7) + vel_ders(i, j, k, 5),2)));
-
-			   //EITerm2
-			   //using AUX1, AUX2, and AUX3 to store the energy flux vector
-			   entropyInequality(i,j,k,5)=0; //AUX1
-			   entropyInequality(i,j,k,6)=0; //AUX2
-			   entropyInequality(i,j,k,7)=0; //AUX3
-			   float sden;
-			   amrex::Real barodiffusion = 0.0;
-			   if (do_barodiffusion) {
-			     barodiffusion = 1.0;
-			   }
-			   // Diffusion driving force
-			   for (int n = 0; n < NUM_SPECIES; n++) {
-			     dkx(i,j,k,n) = gradXx(i,j,k,n) + barodiffusion * (specX(i,j,k,n) - specY(i,j,k,n))*gradP(i,j,k,0)/larr(i,j,k,4);
-			     dky(i,j,k,n) = gradXy(i,j,k,n) + barodiffusion * (specX(i,j,k,n) - specY(i,j,k,n))*gradP(i,j,k,1)/larr(i,j,k,4);
-			     dkz(i,j,k,n) = gradXz(i,j,k,n) + barodiffusion * (specX(i,j,k,n) - specY(i,j,k,n))*gradP(i,j,k,2)/larr(i,j,k,4);
-			   }
-			   // Diffusion Velocity
-			   for (int n = 0; n < NUM_SPECIES; n++) {
-			     sden=std::max(specX(i,j,k,n),pow(10,-8));
-			     vkx(i,j,k,n) = -d_arr(i,j,k,n) * dkx(i,j,k,n) / sden;
-			     vky(i,j,k,n) = -d_arr(i,j,k,n) * dky(i,j,k,n) / sden;
-			     vkz(i,j,k,n) = -d_arr(i,j,k,n) * dkz(i,j,k,n) / sden;
-			   }
-			   if (do_soret) {
-			     for (int n = 0; n < NUM_SPECIES; n++) {
-			       sden=std::max(specY(i,j,k,n),pow(10,-8));
-			       vkx(i,j,k,n) -= Dti(i,j,k,n) * gradT(i,j,k,0) / ( dat(i,j,k,URHO) * sden * larr(i,j,k,3));
-			       vky(i,j,k,n) -= Dti(i,j,k,n) * gradT(i,j,k,1) / ( dat(i,j,k,URHO) * sden * larr(i,j,k,3));
-			       vkz(i,j,k,n) -= Dti(i,j,k,n) * gradT(i,j,k,2) / ( dat(i,j,k,URHO) * sden * larr(i,j,k,3));
-			     }
-			   }
-			   // multicomponent species flux
-			   for (int n = 0; n < NUM_SPECIES; n++) {
-			     jkx(i,j,k,n) = dat(i,j,k,URHO) * specY(i,j,k,n) * vkx(i,j,k,n);
-			     jky(i,j,k,n) = dat(i,j,k,URHO) * specY(i,j,k,n) * vky(i,j,k,n);
-			     jkz(i,j,k,n) = dat(i,j,k,URHO) * specY(i,j,k,n) * vkz(i,j,k,n);
-			   }
-
-			   
-			   for (int n = 0; n < NUM_SPECIES; n++) {
-			     sden=std::max(dat(i,j,k,UFS+n),pow(10,-8)); // No dividing by zero
-			     entropyInequality(i,j,k,5)+= dkx(i,j,k,n) * Dti(i,j,k,n)/sden;
-			     entropyInequality(i,j,k,6)+= dky(i,j,k,n) * Dti(i,j,k,n)/sden;
-			     entropyInequality(i,j,k,7)+= dkz(i,j,k,n) * Dti(i,j,k,n)/sden;
-			   }
-			   entropyInequality(i,j,k,5)*=-c_tot(i,j,k)*pele::physics::Constants::RU*larr(i,j,k,3);
-			   entropyInequality(i,j,k,6)*=-c_tot(i,j,k)*pele::physics::Constants::RU*larr(i,j,k,3);
-			   entropyInequality(i,j,k,7)*=-c_tot(i,j,k)*pele::physics::Constants::RU*larr(i,j,k,3);
-
-
-			   
-			   if ( do_enthalpy_diffusion ){
-			     amrex::Real h_specific[NUM_SPECIES] = {0.0};
-			     amrex::Real y_temp[NUM_SPECIES] = {0.0};
-			     for (int n = 0; n< NUM_SPECIES; n++) {
-			       for (int m = 0; m < NUM_SPECIES; m++) {
-				 y_temp[m] = 0.0;
-			       }
-			       y_temp[n] = 1.0;
-			       CKHBMS(larr(i,j,k,3),y_temp,h_specific[n]); //is in ergs/g
-			       h_specific[n] *= pow(10,-7); //ergs/g -> j/g
-			       entropyInequality(i,j,k,5)+=h_specific[n]*jkx(i,j,k,n);
-			       entropyInequality(i,j,k,6)+=h_specific[n]*jky(i,j,k,n);
-			       entropyInequality(i,j,k,7)+=h_specific[n]*jkz(i,j,k,n);
-			     }
-			   }
-			   
-			   entropyInequality(i,j,k,5)-=lam_arr(i,j,k)*gradT(i,j,k,0);
-			   entropyInequality(i,j,k,6)-=lam_arr(i,j,k)*gradT(i,j,k,1);
-			   entropyInequality(i,j,k,7)-=lam_arr(i,j,k)*gradT(i,j,k,2);
-			   
-			   entropyInequality(i,j,k,1)=(entropyInequality(i,j,k,5)*gradT(i,j,k,0)+
-						       entropyInequality(i,j,k,6)*gradT(i,j,k,1)+
-						       entropyInequality(i,j,k,7)*gradT(i,j,k,2))/larr(i,j,k,3);
-			   // EITerm3
-			   // Start by getting the Dij matrix:
-			   logt(i,j,k,0) = std::log(larr(i,j,k,3));
-			   logt(i,j,k,1) = logt(i,j,k,0) * logt(i,j,k,0);
-			   logt(i,j,k,2) = logt(i,j,k,0) * logt(i,j,k,1);
-			   const amrex::Real scale = pele::physics::Constants::PATM / (pele::physics::Constants::RU * larr(i,j,k,3));
-
-			   for (int ii = 0; ii < NUM_SPECIES; ++ii)
-			     {
-			     for (int jj = 0; jj < NUM_SPECIES; ++jj)
-			       {
-			       const int four_idx_ij = 4 * (ii + NUM_SPECIES * jj);
-			       const amrex::Real dbintemp =
-				 ltransparm->fitdbin[four_idx_ij] +
-				 ltransparm->fitdbin[1 + four_idx_ij] * logt(i,j,k,0) +
-				 ltransparm->fitdbin[2 + four_idx_ij] * logt(i,j,k,1) +
-				 ltransparm->fitdbin[3 + four_idx_ij] * logt(i,j,k,2);
-			   Dij(i,j,k,ii+NUM_SPECIES*jj)=ltransparm->wt[ii] * std::exp(dbintemp) * scale;
-			     }
-			   }
-			   // Verify Dij matrix with an analytical expression from Fluent:
-			   amrex::Real massfrac[NUM_SPECIES];
-			   for (int n = 0; n < NUM_SPECIES; n++) {
-			     massfrac[n] = dat(i, j, k, UFS + n) * rhoInv;
-			   }
-			   amrex::Real pabs;
-			   eos.RTY2P(dat(i,j,k,URHO),larr(i,j,k,3), massfrac, pabs);
-			   for (int ii = 0; ii < NUM_SPECIES; ++ii)
-			     {
-			       for (int jj = 0; jj < NUM_SPECIES; ++jj)
-				 {
-				   amrex::Real t_star=larr(i,j,k,3)*pow(eps_ij[ii][jj],-1);
-				   omega_d(i,j,k)=1.16145*pow(t_star,-.14874) +
-				     .52487*std::exp(-.7732*t_star) +
-				     2.16178*std::exp(-2.43787*t_star);
-				   Dija(i,j,k,ii+NUM_SPECIES*jj) = 0.0188*pow( pow(larr(i,j,k,3),3) * (imw[ii] + imw[jj])  , .5) /
-				     (pow(sig_ij[ii][jj],2)*omega_d(i,j,k) * pabs);
-				   
-				 }
-			     }
-			   // Now that we are done with the energy flux vector, we will construct the
-			   // multicomponent species flux. Starting with the implementation from Kee and Warnatz (1986)
-			   
-			   entropyInequality(i,j,k,2) = 0;
-			   
-			   for (int n = 0; n < NUM_SPECIES-1; n++) {
-			     sden=std::max(dat(i,j,k,UFS+n),pow(10,-8)); // No dividing by zero
-			     entropyInequality(i,j,k,2) += jkx(i,j,k,n)*(dkx(i,j,k,n) / sden - dkx(i,j,k,NUM_SPECIES-1) / dat(i,j,k,UFS+NUM_SPECIES-1));
-			     entropyInequality(i,j,k,2) += jky(i,j,k,n)*(dky(i,j,k,n) / sden - dky(i,j,k,NUM_SPECIES-1) / dat(i,j,k,UFS+NUM_SPECIES-1));
-			     entropyInequality(i,j,k,2) += jkz(i,j,k,n)*(dkz(i,j,k,n) / sden - dkz(i,j,k,NUM_SPECIES-1) / dat(i,j,k,UFS+NUM_SPECIES-1));
-			   }
-
-			   entropyInequality(i,j,k,2) *= c_tot(i,j,k) * pele::physics::Constants::RU * larr(i,j,k,3);
-			   
-			   // EITERM4
-			   amrex::Real tc[5] = {0.0};
-			   amrex::Real gibbs_fe[NUM_SPECIES] = {0.0};
-			   amrex::Real prod_rate[NUM_SPECIES] = {0.0};
-			   
-			   tc[1] = larr(i,j,k,3);
-			   tc[0] = std::log(tc[1]);
-			   tc[2] = pow(tc[1],2);
-			   tc[3] = pow(tc[1],3);
-			   tc[4] = pow(tc[1],4);
-			   gibbs(gibbs_fe,tc);
-			   // Get chemical potential, or molar gibbs
-			   for (int n = 0; n < NUM_SPECIES; n++) {
-			     gibbs_fe[n] *= pele::physics::Constants::RU * larr(i,j,k,3) * mw[n] * pow(10,-7);
-			   }
-			   // Get rate of production of each species
-			   CKWYR(dat(i,j,k,URHO), larr(i,j,k,3), massfrac, prod_rate);
-			   // prod rate is in mole/(cm^3 s ), need to convert to mole/(m^3 s)
-			   for (int n = 0; n < NUM_SPECIES; n++) {
-			     prod_rate[n] *=  pow(10,6);
-			   }
-			   //Calculate fourth term
-			   entropyInequality(i,j,k,3) = 0.0;
-			   for (int n = 0; n < NUM_SPECIES; n++) {
-			     entropyInequality(i,j,k,3) += prod_rate[n] * gibbs_fe[n];
-			   }
-
-			   // Sum of all terms
-			   
-			   entropyInequality(i,j,k,4) = entropyInequality(i,j,k,0) +
-			                                entropyInequality(i,j,k,1) +
-			                                entropyInequality(i,j,k,2) +
-			                                entropyInequality(i,j,k,3);
-			   
-			   //Check magnitude of mole fraction gradient, temporary
-			   for (int n = 0; n < NUM_SPECIES; n++) {
-			     entropyInequality(i,j,k,9+n)= prod_rate[n] * gibbs_fe[n];
-			     
-
-			     
-			   }
-			   amrex::Real species_concentration[NUM_SPECIES] = {0.0};
-			   amrex::Real q_f[NUM_REACTIONS] = {0.0};
-			   amrex::Real q_r[NUM_REACTIONS] = {0.0};
-			   amrex::Real wdot[NUM_REACTIONS] = {0.0};
-			   amrex::Real rho = dat(i, j, k, 0);
-			   int nspec = 0;
-			   int& nspecr = nspec;
-			   int* temp;
-			   int* temp2;
-			   CKINU(0, nspecr, temp, temp2);
-			   int ki[nspec] = {0};
-			   int nu[nspec] = {0};
-			   int* kip = ki;
-			   int* nup = nu;
-			   
-			   // get concentration in SI units
-			   for (int i = 0; i < NUM_SPECIES; i++) { 
-			     species_concentration[i] = 1e6 * rho * massfrac[i] * imw[i];
-			   }
-			   progressRateFR(q_f, q_r, species_concentration, tc[1]);
-
-
-			   
-			   
-			   for (int n = 0; n < NUM_REACTIONS; n++) {
-			     CKINU(n, nspecr, kip, nup);
-			     entropyInequality(i,j,k,9+NUM_SPECIES+n)=0;
-			     for (int m = 0; m < nspec; m++){
-			        entropyInequality(i,j,k,9+NUM_SPECIES+n)+= 1e6 * (q_f[n] - q_r[n]) * static_cast<double>(nu[m]) * gibbs_fe[ki[m]-1];
-			     }
-			   }
-			   
-			   
-			   });
-
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -1483,17 +971,14 @@ pc_dertestfun(
 {
   auto const data = datfab.const_array();
   auto testfun = derfab.array();
-
-
-
   auto const dat = datfab.const_array();
   auto vel_ders = derfab.array();
-  
+
   const amrex::Box& gbx = amrex::grow(bx, 1);
-  
-  amrex::FArrayBox local(gbx, 3, amrex::The_Async_Arena());
-  auto larr = local.array();
-  
+
+   amrex::FArrayBox local(gbx, 3, amrex::The_Async_Arena());
+  // auto larr =derfab.array();
+
   const auto& flag_fab = amrex::getEBCellFlagFab(datfab);
   const auto& typ = flag_fab.getType(bx);
   if (typ == amrex::FabType::covered) {
@@ -1503,11 +988,6 @@ pc_dertestfun(
   const auto& flags = flag_fab.const_array();
   const bool all_regular = typ == amrex::FabType::regular;
 
-
-
-
-
-  
   const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> prob_low =
     geomdata.ProbLoArray();
   const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> prob_high =
@@ -1519,64 +999,201 @@ pc_dertestfun(
                , const amrex::Real centerz = 0.5 * (prob_low[2] + prob_high[2]));
 
   amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k) noexcept {
-			   AMREX_D_TERM(
-					const amrex::Real x = prob_low[0] + (i + 0.5) * ddx[0] - centerx;
-					, const amrex::Real y = prob_low[1] + (j + 0.5) * ddx[1] - centery;
-					, const amrex::Real z = prob_low[2] + (k + 0.5) * ddx[2] - centerz;);
-			   const amrex::Real r = sqrt(AMREX_D_TERM(x * x, +y * y, +z * z));
-			   testfun(i, j, k,0) = exp(-.5*r*r)*cos(5*3.1415926*r);
-			   testfun(i, j, k,1) = -(cos(5*3.1415926*r) + (5*3.1415926/r)*sin(5*3.1415926*r))*exp(-.5*r*r)*x;
-			   testfun(i, j, k,2) = -(cos(5*3.1415926*r) + (5*3.1415926/r)*sin(5*3.1415926*r))*exp(-.5*r*r)*y;
-			   testfun(i, j, k,3) = -(cos(5*3.1415926*r) + (5*3.1415926/r)*sin(5*3.1415926*r))*exp(-.5*r*r)*z;
-			   //testfun(i, j, k, 0)  = (x+y-.5*z>0)? 0 : 1;
-			   //testfun(i, j, k, 1)  = 0;
-			   //testfun(i, j, k, 2)  = 0;
-			   //testfun(i, j, k, 3)  = 0;
-			 });
-			   
-  amrex::ParallelFor(gbx, [=] AMREX_GPU_DEVICE(int i, int j, int k) noexcept {
-			    
-			    AMREX_D_TERM(
-					 const amrex::Real x = prob_low[0] + (i + 0.5) * ddx[0] - centerx;
-					 , const amrex::Real y = prob_low[1] + (j + 0.5) * ddx[1] - centery;
-					 , const amrex::Real z = prob_low[2] + (k + 0.5) * ddx[2] - centerz;);
-			    const amrex::Real r = sqrt(AMREX_D_TERM(x * x, +y * y, +z * z));
-			    larr(i, j, k) = exp(-.5*r*r)*cos(5*3.1415926*r);
-			    //larr(i, j, k)   = (x+y-.5*z>0)? 0 : 1;
-			  });
-  
-  AMREX_D_TERM(const amrex::Real dx = geomdata.CellSize(0);
-               , const amrex::Real dy = geomdata.CellSize(1);
-               , const amrex::Real dz = geomdata.CellSize(2););
-
-  amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k) noexcept {
-			   AMREX_D_TERM(int im; int ip;, int jm; int jp;, int km; int kp;);
-			   AMREX_D_TERM(get_idx(i, 0, all_regular, flags(i, j, k), im, ip);
-					, get_idx(j, 1, all_regular, flags(i, j, k), jm, jp);
-					, get_idx(k, 2, all_regular, flags(i, j, k), km, kp););
-			   AMREX_D_TERM(const amrex::Real wi = get_weight(im, ip);
-					, const amrex::Real wj = get_weight(jm, jp);
-					, const amrex::Real wk = get_weight(km, kp););
-
-			   testfun(i, j, k, 4) = wi * (larr(ip, j, k) - larr(im, j, k)) / dx; 
-			   testfun(i, j, k, 5) = wj * (larr(i, jp, k) - larr(i, jm, k)) / dy; 
-			   testfun(i, j, k, 6) = wk * (larr(i, j, kp) - larr(i, j, km)) / dz;
-
-			   testfun(i,j,k,7) = testfun(i,j,k,1)-testfun(i,j,k,4);
-			   testfun(i,j,k,8) = testfun(i,j,k,2)-testfun(i,j,k,5);
-			   testfun(i,j,k,9) = testfun(i,j,k,3)-testfun(i,j,k,6);
+    AMREX_D_TERM(
+      const amrex::Real x = prob_low[0] + (i + 0.5) * ddx[0] - centerx;
+      , const amrex::Real y = prob_low[1] + (j + 0.5) * ddx[1] - centery;
+      , const amrex::Real z = prob_low[2] + (k + 0.5) * ddx[2] - centerz;);
+      const amrex::Real r = sqrt(AMREX_D_TERM(x * x, +y * y, +z * z));
+      testfun(i, j, k,0) = exp(-.5*r*r)*cos(5*3.1415926*r);
+      testfun(i, j, k,1) = -(cos(5*3.1415926*r) + 5*3.1415926/r*sin(5*3.1415926*r))*exp(-.5*r*r)*(x-.15625);
+      testfun(i, j, k,2) = -(cos(5*3.1415926*r) + 5*3.1415926/r*sin(5*3.1415926*r))*exp(-.5*r*r)*(y-.15625);
+      testfun(i, j, k,3) = -(cos(5*3.1415926*r) + 5*3.1415926/r*sin(5*3.1415926*r))*exp(-.5*r*r)*(z-2.0);
 
 
-			   testfun(i,j,k,10) = dx;
-			   testfun(i,j,k,11) = dy;
-			   testfun(i,j,k,12) = dz;
-			   testfun(i,j,k,13) = kp;
-			   testfun(i,j,k,14) = k;
-			   testfun(i,j,k,15) = km;
-			     
-			   
-			 });
+
+
+      
+      
+       
+
+      
+      
+
+      // // Convert momentum to velocity.
+      //  amrex::ParallelFor(gbx, [=] AMREX_GPU_DEVICE(int i, int j, int k) noexcept {
+      //  				const amrex::Real rhoInv = 1.0 / dat(i, j, k, URHO);
+      //  				larr(i, j, k, 0) = dat(i, j, k, UMX) * rhoInv;
+      //  				larr(i, j, k, 1) = dat(i, j, k, UMY) * rhoInv;
+      //  				larr(i, j, k, 2) = dat(i, j, k, UMZ) * rhoInv;
+      //  			      });
+      
+       AMREX_D_TERM(const amrex::Real dx = geomdata.CellSize(0);
+       		   , const amrex::Real dy = geomdata.CellSize(1);
+       		   , const amrex::Real dz = geomdata.CellSize(2););
+      
+       amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k) noexcept {
+				AMREX_D_TERM(int im; int ip;, int jm; int jp;, int km; int kp;);
+				AMREX_D_TERM(get_idx(i, 0, all_regular, flags(i, j, k), im, ip);
+					     , get_idx(j, 1, all_regular, flags(i, j, k), jm, jp);
+					     , get_idx(k, 2, all_regular, flags(i, j, k), km, kp););
+				// int imax = amrex::min(i+nbuf.x, hi.x);
+				// int jmax = amrex::min(j+nbuf.y, hi.y);
+				// int kmax = amrex::min(k+nbuf.z, hi.z);
+				// int imin = amrex::max(i-nbuf.x, lo.x);
+				// int jmin = amrex::max(j-nbuf.y, lo.y);
+				// int kmin = amrex::max(k-nbuf.z, lo.z);
+				amrex::Box const& interiorplusbuf = amrex::grow(bx, 0);
+				const auto lo = amrex::lbound(interiorplusbuf);
+				const auto hi = amrex::ubound(interiorplusbuf);
+				int imin=lo.x;
+				int imax=hi.x;
+				int jmin=lo.y;
+				int jmax=hi.y;
+				int kmin=lo.z;
+				int kmax=hi.z;
+				std::cout << "\n";
+				std::cout << imin;
+				std::cout << "\n";
+
+				std::cout << imax;
+				std::cout << "\n";
+
+				std::cout << jmin;
+				std::cout << "\n";
+
+				std::cout << jmax;
+				std::cout << "\n";
+
+				std::cout << kmin;
+				std::cout << "\n";
+
+				std::cout << kmax;
+				std::cout << "\n";
+
+				std::cout << i;
+				std::cout << "\n";
+				std::cout << j;
+				std::cout << "\n";
+				std::cout << k;
+				std::cout << "\n";
+				
+				if (i>imin && i<imax) {
+				  AMREX_D_TERM(const amrex::Real wi = get_weight(im, ip);
+					       , const amrex::Real wj = get_weight(jm, jp);
+					       , const amrex::Real wk = get_weight(km, kp););
+				 testfun(i, j, k, 4) = wi * (testfun(ip, j, k, 0) - testfun(im, j, k, 0)) / dx; // dudx
+				 testfun(i, j, k, 7) = testfun(i,j,k,4)-testfun(i,j,k,1);
+			       
+			       } else if (i==imin) {
+				  
+				  AMREX_D_TERM(get_idx(i, 0, all_regular, flags(i, j, k), im, ip);
+					     , get_idx(j, 1, all_regular, flags(i, j, k), jm, jp);
+					     , get_idx(k, 2, all_regular, flags(i, j, k), km, kp););
+				 AMREX_D_TERM(const amrex::Real wi = get_weight(im, ip);
+					      , const amrex::Real wj = get_weight(jm, jp);
+					      , const amrex::Real wk = get_weight(km, kp););
+				 std::cout << i;
+				std::cout << "\n";
+				std::cout << j;
+				std::cout << "\n";
+				std::cout << k;
+				std::cout << "\n";
+
+				 testfun(i, j, k, 4) = wi * (testfun(ip, j, k, 0) - testfun(i, j, k, 0)) / dx; // dudx
+
+				 testfun(i, j, k, 7) = testfun(i,j,k,4)-testfun(i,j,k,1);
+				}else if (i==imax) {
+				  AMREX_D_TERM(get_idx(i, 0, all_regular, flags(i, j, k), im, i);
+					     , get_idx(j, 1, all_regular, flags(i, j, k), jm, j);
+					     , get_idx(k, 2, all_regular, flags(i, j, k), km, k););
+				 AMREX_D_TERM(const amrex::Real wi = get_weight(im, i);
+					      , const amrex::Real wj = get_weight(jm, j);
+					      , const amrex::Real wk = get_weight(km, k););
+			       
+				 testfun(i, j, k, 4) = wi * (testfun(i, j, k, 0) - testfun(im, j, k, 0)) / dx; // dudx
+				 testfun(i, j, k, 7) = testfun(i,j,k,4)-testfun(i,j,k,1);
+
+			       }
+			       if (j>jmin && j<jmax) {
+				 AMREX_D_TERM(const amrex::Real wi = get_weight(im, ip);
+					      , const amrex::Real wj = get_weight(jm, jp);
+					      , const amrex::Real wk = get_weight(km, kp););
+			       
+				 testfun(i, j, k, 5) = wj * (testfun(i, jp, k, 0) - testfun(i, jm, k, 0)) / dy; // dudx
+				 testfun(i, j, k, 8) = testfun(i,j,k,5)-testfun(i,j,k,2);
+			       
+			       } else if (j==jmin) {
+				 AMREX_D_TERM(get_idx(i, 0, all_regular, flags(i, j, k), i, ip);
+					     , get_idx(j, 1, all_regular, flags(i, j, k), j, jp);
+					     , get_idx(k, 2, all_regular, flags(i, j, k), k, kp););
+
+				 AMREX_D_TERM(const amrex::Real wi = get_weight(i, ip);
+					      , const amrex::Real wj = get_weight(j, jp);
+					      , const amrex::Real wk = get_weight(k, kp););
+			       
+				 testfun(i, j, k, 5) = wj * (testfun(i, jp, k, 0) - testfun(i, j, k, 0)) / dy; // dudx
+				 testfun(i, j, k, 8) = testfun(i,j,k,5)-testfun(i,j,k,2);
+			       }else if (j==jmax) {
+				 AMREX_D_TERM(get_idx(i, 0, all_regular, flags(i, j, k), im, i);
+					     , get_idx(j, 1, all_regular, flags(i, j, k), jm, j);
+					     , get_idx(k, 2, all_regular, flags(i, j, k), km, k););
+				 AMREX_D_TERM(const amrex::Real wi = get_weight(im, i);
+					      , const amrex::Real wj = get_weight(jm, j);
+					      , const amrex::Real wk = get_weight(km, k););
+			       
+				 testfun(i, j, k, 5) = wj * (testfun(i, j, k, 0) - testfun(i, jm, k, 0)) / dy; // dudx
+				 testfun(i, j, k, 8) = testfun(i,j,k,5)-testfun(i,j,k,2);
+
+			       }
+			       
+			       if (k>kmin && k<kmax) {
+				 AMREX_D_TERM(const amrex::Real wi = get_weight(im, ip);
+					      , const amrex::Real wj = get_weight(jm, jp);
+					      , const amrex::Real wk = get_weight(km, kp););
+			       
+				 testfun(i, j, k, 6) = wk * (testfun(i, j, kp, 0) - testfun(i, j, km, 0)) / dz; // dudx
+				 testfun(i, j, k, 9) = testfun(i,j,k,6)-testfun(i,j,k,3);
+			       
+			       } else if (k==kmin) {
+				 AMREX_D_TERM(get_idx(i, 0, all_regular, flags(i, j, k), i, ip);
+					     , get_idx(j, 1, all_regular, flags(i, j, k), j, jp);
+					     , get_idx(k, 2, all_regular, flags(i, j, k), k, kp););
+
+				 AMREX_D_TERM(const amrex::Real wi = get_weight(i, ip);
+					      , const amrex::Real wj = get_weight(j, jp);
+					      , const amrex::Real wk = get_weight(k, kp););
+			       
+				 testfun(i, j, k, 6) = wk * (testfun(i, j, kp, 0) - testfun(i, j, k, 0)) / dz; // dudx
+				 testfun(i, j, k, 9) = testfun(i,j,k,6)-testfun(i,j,k,3);
+			       }else if (k==kmax) {
+				 AMREX_D_TERM(get_idx(i, 0, all_regular, flags(i, j, k), im, i);
+					     , get_idx(j, 1, all_regular, flags(i, j, k), jm, j);
+					      , get_idx(k, 2, all_regular, flags(i, j, k), km, k););
+				 AMREX_D_TERM(const amrex::Real wi = get_weight(im, i);
+					      , const amrex::Real wj = get_weight(jm, j);
+					      , const amrex::Real wk = get_weight(km, k););
+			       
+				 testfun(i, j, k, 6) = wk * (testfun(i, j, k, 0) - testfun(i, j, km, 0)) / dz; // dudx
+				 testfun(i, j, k, 9) = testfun(i,j,k,6)-testfun(i,j,k,3);
+
+			       }
+
+			       
+			      });
+	
+	
+	
+
+
+
+
+
+
+      
+
+ });
 }
+
 
 
 

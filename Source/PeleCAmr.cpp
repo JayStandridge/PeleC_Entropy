@@ -21,6 +21,7 @@ PeleCAmr::writePlotFile()
   if (statePlotVars().empty()) {
     return;
   }
+  
 
   const std::string& pltfile =
     amrex::Concatenate(plot_file_root, level_steps[0], file_name_digits);
@@ -28,11 +29,12 @@ PeleCAmr::writePlotFile()
   if (verbose > 0) {
     amrex::Print() << "PLOTFILE: file = " << pltfile << '\n';
   }
+  
 
   if ((record_run_info == 0) && amrex::ParallelDescriptor::IOProcessor()) {
     runlog << "PLOTFILE: file = " << pltfile << '\n';
   }
-
+  
   bool write_hdf5_plots = false;
   std::string hdf5_compression{"None@0"};
 #ifdef AMREX_USE_HDF5
@@ -42,6 +44,7 @@ PeleCAmr::writePlotFile()
   pp.query("hdf5_compression", hdf5_compression);
 #endif
 #endif
+  
   writePlotFileDoit(pltfile, true, write_hdf5_plots, hdf5_compression);
 }
 
@@ -84,7 +87,6 @@ PeleCAmr::constructPlotMF(
   amrex::Vector<std::unique_ptr<amrex::MultiFab>>& plotMFs,
   amrex::Vector<std::string>& plt_var_names)
 {
-
   const auto& desc_lst = amrex::AmrLevel::get_desc_lst();
   amrex::Vector<std::pair<int, int>> plot_var_map;
   for (int typ = 0; typ < desc_lst.size(); typ++) {
@@ -96,7 +98,7 @@ PeleCAmr::constructPlotMF(
       }
     }
   }
-
+  
   int num_derive = 0;
   auto& derive_lst = amrex::AmrLevel::get_derive_lst();
   std::list<std::string> derive_names;
@@ -115,7 +117,7 @@ PeleCAmr::constructPlotMF(
     }
 #endif
   }
-
+  
   // Decide to plot vfrac
   bool plot_vfrac =
     ebInDomain() && (amrex::EB2::TopIndexSpaceIfPresent() != nullptr);
@@ -135,7 +137,7 @@ PeleCAmr::constructPlotMF(
     plotMFs[lev] = std::make_unique<amrex::MultiFab>(
       boxArray(lev), DistributionMap(lev), n_data_items, nGrow, amrex::MFInfo(),
       amr_level[lev]->Factory());
-
+    
     // Cull data from state variables -- use no ghost cells.
     int cnt = 0;
     for (int i = 0; i < plot_var_map.size(); i++) {
@@ -145,13 +147,12 @@ PeleCAmr::constructPlotMF(
       amrex::MultiFab::Copy(*plotMFs[lev], this_dat, comp, cnt, 1, nGrow);
       cnt++;
     }
-
+    
     // Cull data from derived variables.
     if ((!derive_names.empty())) {
       for (const auto& derive_name : derive_names) {
         const amrex::DeriveRec* rec = derive_lst.get(derive_name);
         int ncomp = rec->numDerive();
-
         auto derive_dat = amr_level[lev]->derive(derive_name, cur_time, nGrow);
         amrex::MultiFab::Copy(*plotMFs[lev], *derive_dat, 0, cnt, ncomp, nGrow);
         cnt += ncomp;
@@ -257,7 +258,8 @@ PeleCAmr::writePlotFileDoit(
     amrex::WriteMultiLevelPlotfile(
       pltfile, nlevels, plotMFs_constvec, plt_var_names, Geom(), cur_time,
       istep, refRatio());
-#ifdef AMREX_USE_HDF5
+
+#ifdef AMREX_USE_HDF5   
   }
 #endif
 

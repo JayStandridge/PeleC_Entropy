@@ -542,7 +542,7 @@ PeleC::variableSetUp()
     var_names_EI[9+i] = "EI(" + spec_names[i] + ")";
   }
    for (int i = 0; i < NUM_REACTIONS; i++) {
-     var_names_EI[9+i] = "EI(Reaction " + std::to_string(i) + ")";
+     var_names_EI[9+NUM_SPECIES+i] = "EI(Reaction " + std::to_string(i) + ")";
   }
    // var_names_EI[9] = "EI(H2)";
    // var_names_EI[10]= "EI(O2)";
@@ -555,7 +555,7 @@ PeleC::variableSetUp()
    // var_names_EI[17]= "EI(N2)";
 
    derive_lst.add(
-     "entropyInequality", amrex::IndexType::TheCellType(), 9+NUM_SPECIES, var_names_EI,
+     "entropyInequality", amrex::IndexType::TheCellType(), 9+NUM_SPECIES+NUM_REACTIONS, var_names_EI,
      PeleC::pc_entropyInequality, amrex::DeriveRec::GrowBoxByOne);
 
      // derive_lst.add(

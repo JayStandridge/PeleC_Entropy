@@ -1,0 +1,4979 @@
+%!PS-Adobe-3.0
+%%Title: Derive.cpp
+%%For: Jay Standridge
+%%Creator: a2ps version 4.14
+%%CreationDate: Mon Mar  6 16:08:33 2023
+%%BoundingBox: 24 24 588 768
+%%DocumentData: Clean7Bit
+%%Orientation: Landscape
+%%Pages: 12
+%%PageOrder: Ascend
+%%DocumentMedia: Letter 612 792 0 () ()
+%%DocumentNeededResources: font Courier
+%%+ font Courier-Bold
+%%+ font Helvetica
+%%+ font Helvetica-Bold
+%%+ font Symbol
+%%+ font Times-Bold
+%%+ font Times-Roman
+%%DocumentProcessColors: Black Blue Green Red 
+%%DocumentSuppliedResources: procset a2ps-color-prolog
+%%+ encoding ISO-8859-1Encoding
+%%EndComments
+/a2psdict 200 dict def
+a2psdict begin
+%%BeginProlog
+%%Copyright: (c) 1988, 89, 90, 91, 92, 93 Miguel Santana
+%%Copyright: (c) 1995, 96, 97, 98 Akim Demaille, Miguel Santana
+% Check PostScript language level.
+/languagelevel where {
+  pop /gs_languagelevel languagelevel def
+} {
+  /gs_languagelevel 1 def
+} ifelse
+
+% EPSF import as in the Red Book
+/BeginInclude {
+  /b4_Inc_state save def    		% Save state for cleanup
+  /dict_count countdictstack def	% Count objects on dict stack
+  /op_count count 1 sub def		% Count objects on operand stack 
+  userdict begin
+    0 setgray 0 setlinecap
+    1 setlinewidth 0 setlinejoin
+    10 setmiterlimit [ ] 0 setdash newpath
+    gs_languagelevel 1 ne {
+      false setstrokeadjust false setoverprint 
+    } if
+} bind def
+
+/EndInclude {
+  count op_count sub { pos } repeat	% Clean up stacks
+  countdictstack dict_count sub { end } repeat
+  b4_Inc_state restore
+} bind def
+
+/BeginEPSF {
+  BeginInclude
+  /showpage { } def
+} bind def
+
+/EndEPSF {
+  EndInclude
+} bind def
+
+% Page prefeed
+/page_prefeed {         % bool -> -
+  statusdict /prefeed known {
+    statusdict exch /prefeed exch put
+  } {
+    pop
+  } ifelse
+} bind def
+
+/deffont {
+  findfont exch scalefont def
+} bind def
+
+/reencode_font {
+  findfont reencode 2 copy definefont pop def
+} bind def
+
+% Function c-show (str => -)
+% centers text only according to x axis.
+/c-show { 
+  dup stringwidth pop
+  2 div neg 0 rmoveto
+  show
+} bind def
+
+% Function l-show (str => -)
+% prints texts so that it ends at currentpoint
+/l-show {
+  dup stringwidth pop neg 
+  0 
+  rmoveto show
+} bind def
+
+% center-fit show (str w => -)
+% show centered, and scale currentfont so that the width is less than w
+/cfshow {
+  exch dup stringwidth pop
+  % If the title is too big, try to make it smaller
+  3 2 roll 2 copy
+  gt
+  { % if, i.e. too big
+    exch div
+    currentfont exch scalefont setfont
+  } { % ifelse
+    pop pop 
+  }
+  ifelse
+  c-show			% center title
+} bind def
+
+% Return the y size of the current font
+% - => fontsize
+/currentfontsize {
+  currentfont /FontType get 0 eq {
+    currentfont /FontMatrix get 3 get
+  }{
+    currentfont /FontMatrix get 3 get 1000 mul
+  } ifelse
+} bind def
+
+% reencode the font
+% <encoding-vector> <fontdict> -> <newfontdict>
+/reencode { %def
+  dup length 5 add dict begin
+    { %forall
+      % <vector> <key> <val>
+      1 index /FID ne 
+      { def }{ pop pop } ifelse
+    } forall
+    /Encoding exch def % -
+
+    % Use the font's bounding box to determine the ascent, descent,
+    % and overall height; don't forget that these values have to be
+    % transformed using the font's matrix.
+    % We use `load' because sometimes BBox is executable, sometimes not.
+    % Since we need 4 numbers an not an array avoid BBox from being executed
+    /FontBBox load aload pop
+    FontMatrix transform /Ascent exch def pop
+    FontMatrix transform /Descent exch def pop
+    /FontHeight Ascent Descent sub def
+
+    % Get the underline position and thickness if they're defined.
+    % Use 1 if they are not defined.
+    currentdict /FontInfo 2 copy known
+    { get
+      /UnderlinePosition 2 copy % <FontInfo> /UP <FontInfo> /UP
+      2 copy known
+      { get }{ pop pop 1 } ifelse
+      0 exch FontMatrix transform exch pop
+      def % <FontInfo>
+
+      /UnderlineThickness 2 copy % <FontInfo> /UT <FontInfo> /UT
+      2 copy known
+      { get }{ pop pop 1 } ifelse
+      0 exch FontMatrix transform exch pop
+      def % <FontInfo>
+      pop % -
+    }{ pop pop
+    } ifelse
+
+    currentdict
+  end 
+} bind def
+
+% composite fonts for ASCII-EUC mixed strings
+% Version 1.2 1/31/1990
+% Original Ken'ichi HANDA (handa@etl.go.jp)
+% Modified Norio Katayama (katayama@rd.nacsis.ac.jp),1998
+% Extend & Fix Koji Nakamaru (maru@on.cs.keio.ac.jp), 1999
+% Anyone can freely copy, modify, distribute this program.
+
+/copyfont {	% font-dic extra-entry-count  copyfont  font-dic
+	1 index maxlength add dict begin
+	{	1 index /FID ne 2 index /UniqueID ne and
+		{def} {pop pop} ifelse
+	} forall
+	currentdict
+	end
+} bind def
+
+/compositefont { % ASCIIFontName EUCFontName RomanScale RomanOffset Rot(T/F) compositefont font
+    /RomanRotation exch def
+    /RomanOffset exch def
+    /RomanScale exch def
+    userdict /fixeucfont_dict known not {
+	userdict begin
+	    /fixeucfont_dict 2 dict begin
+		/UpperByteEncoding [
+		    16#00 1 16#20 { pop 0 } for
+		    16#21 1 16#28 { 16#20 sub } for
+		    16#29 1 16#2F { pop 0 } for
+		    16#30 1 16#74 { 16#27 sub } for
+		    16#75 1 16#FF { pop 0 } for
+		] def
+	        /LowerByteEncoding [
+		    16#00 1 16#A0 { pop /.notdef } for
+		    16#A1 1 16#FE { 16#80 sub 16 2 string cvrs
+				    (cXX) dup 1 4 -1 roll
+				    putinterval cvn } for
+		    /.notdef
+		] def
+		currentdict
+	    end def
+	end
+    } if
+    findfont dup /FontType get 0 eq {
+	14 dict begin
+	    %
+	    % 7+8 bit EUC font
+	    %
+	    12 dict begin
+		/EUCFont exch def
+		/FontInfo (7+8 bit EUC font) readonly def
+		/PaintType 0 def
+		/FontType 0 def
+		/FontMatrix matrix def
+		% /FontName
+		/Encoding fixeucfont_dict /UpperByteEncoding get def
+		/FMapType 2 def
+		EUCFont /WMode known
+		{ EUCFont /WMode get /WMode exch def }
+		{ /WMode 0 def } ifelse
+		/FDepVector [
+		    EUCFont /FDepVector get 0 get
+		    [ 16#21 1 16#28 {} for 16#30 1 16#74 {} for ]
+		    {
+			13 dict begin
+			    /EUCFont EUCFont def
+			    /UpperByte exch 16#80 add def	
+			    % /FontName
+			    /FontInfo (EUC lower byte font) readonly def
+			    /PaintType 0 def
+			    /FontType 3 def
+			    /FontMatrix matrix def
+			    /FontBBox {0 0 0 0} def
+			    /Encoding
+				fixeucfont_dict /LowerByteEncoding get def
+			    % /UniqueID
+			    % /WMode
+			    /BuildChar {
+				gsave
+				exch dup /EUCFont get setfont
+				/UpperByte get
+				2 string
+				dup 0 4 -1 roll put
+				dup 1 4 -1 roll put
+				dup stringwidth setcharwidth
+				0 0 moveto show
+				grestore
+			    } bind def
+			    currentdict
+			end
+			/lowerbytefont exch definefont
+		    } forall
+		] def
+		currentdict
+	    end
+	    /eucfont exch definefont
+	    exch
+	    findfont 1 copyfont dup begin
+		RomanRotation {
+			/FontMatrix FontMatrix
+			[ 0 RomanScale neg RomanScale 0 RomanOffset neg 0 ]
+			matrix concatmatrix def
+		}{
+			/FontMatrix FontMatrix
+			[ RomanScale 0 0 RomanScale 0 RomanOffset ] matrix concatmatrix
+			def
+			/CDevProc
+			    {pop pop pop pop 0 exch -1000 exch 2 div 880} def
+		} ifelse
+	    end
+	    /asciifont exch definefont
+	    exch
+	    /FDepVector [ 4 2 roll ] def
+	    /FontType 0 def
+	    /WMode 0 def
+	    /FMapType 4 def
+	    /FontMatrix matrix def
+	    /Encoding [0 1] def
+	    /FontBBox {0 0 0 0} def
+%	    /FontHeight 1.0 def % XXXX
+	    /FontHeight RomanScale 1.0 ge { RomanScale }{ 1.0 } ifelse def
+	    /Descent -0.3 def   % XXXX
+	    currentdict
+	end
+	/tmpfont exch definefont
+	pop
+	/tmpfont findfont
+    }{
+	pop findfont 0 copyfont
+    } ifelse
+} def	
+
+/slantfont {	% FontName slant-degree  slantfont  font'
+    exch findfont 1 copyfont begin
+    [ 1 0 4 -1 roll 1 0 0 ] FontMatrix exch matrix concatmatrix
+    /FontMatrix exch def
+    currentdict
+    end
+} def
+
+% Function print line number (<string> # -)
+/# {
+  gsave
+    sx cw mul neg 2 div 0 rmoveto
+    f# setfont
+    c-show
+  grestore
+} bind def
+
+% -------- Some routines to enlight plain b/w printings ---------
+
+% Underline
+% width --
+/dounderline {
+  currentpoint
+  gsave
+    moveto
+    0 currentfont /Descent get currentfontsize mul rmoveto
+    0 rlineto
+    stroke
+  grestore
+} bind def
+
+% Underline a string
+% string --
+/dounderlinestring {
+  stringwidth pop
+  dounderline
+} bind def
+
+/UL {
+  /ul exch store
+} bind def
+
+% Draw a box of WIDTH wrt current font
+% width --
+/dobox {
+  currentpoint
+  gsave
+    newpath
+    moveto
+    0 currentfont /Descent get currentfontsize mul rmoveto
+    dup 0 rlineto
+    0 currentfont /FontHeight get currentfontsize mul rlineto
+    neg 0 rlineto
+    closepath
+    stroke
+  grestore
+} bind def
+
+/BX {
+  /bx exch store
+} bind def
+
+% Box a string
+% string --
+/doboxstring {
+  stringwidth pop
+  dobox
+} bind def
+
+%
+% ------------- Color routines ---------------
+%
+/FG /setrgbcolor load def
+
+% Draw the background
+% width --
+/dobackground {
+  currentpoint
+  gsave
+    newpath
+    moveto
+    0 currentfont /Descent get currentfontsize mul rmoveto
+    dup 0 rlineto
+    0 currentfont /FontHeight get currentfontsize mul rlineto
+    neg 0 rlineto
+    closepath
+    bgcolor aload pop setrgbcolor
+    fill
+  grestore
+} bind def
+
+% Draw bg for a string
+% string --
+/dobackgroundstring {
+  stringwidth pop
+  dobackground
+} bind def
+
+
+/BG {
+  dup /bg exch store
+  { mark 4 1 roll ] /bgcolor exch store } if
+} bind def
+
+
+/Show {
+  bg { dup dobackgroundstring } if
+  ul { dup dounderlinestring } if
+  bx { dup doboxstring } if
+  show
+} bind def
+
+% Function T(ab), jumps to the n-th tabulation in the current line
+/T {
+  cw mul x0 add
+  bg { dup currentpoint pop sub dobackground } if
+  ul { dup currentpoint pop sub dounderline } if
+  bx { dup currentpoint pop sub dobox } if
+  y0 moveto
+} bind def
+
+% Function n: move to the next line
+/n {
+  /y0 y0 bfs sub store
+  x0 y0 moveto
+} bind def
+
+% Function N: show and move to the next line
+/N {
+  Show
+  /y0 y0 bfs sub store
+  x0 y0 moveto
+} bind def
+
+/S {
+  Show
+} bind def
+
+%%Copyright: (c) 1988, 89, 90, 91, 92, 93 Miguel Santana
+%%Copyright: (c) 1995, 96, 97, 98 Akim Demaille, Miguel Santana
+% Function title: prints page header.
+% <ct> <rt> <lt> are passed as argument
+/title { 
+  % 1. Draw the background
+  x v get y v get moveto
+  0 setgray
+  gsave
+    0 th 2 div neg rmoveto 
+    th setlinewidth
+    0.5 0.5 1 setrgbcolor
+    pw 0 rlineto stroke
+  grestore
+  % 2. Border it
+  gsave
+    0.7 setlinewidth
+    pw 0 rlineto
+    0 th neg rlineto
+    pw neg 0 rlineto
+    closepath stroke
+  grestore
+  % stk: ct rt lt
+  x v get y v get th sub 1 add moveto
+%%IncludeResource: font Helvetica
+  fHelvetica fnfs 0.8 mul scalefont setfont
+  % 3. The left title
+  gsave
+    dup stringwidth pop fnfs 0.8 mul add exch % leave space took on stack
+    fnfs 0.8 mul hm rmoveto
+    show			% left title
+  grestore
+  exch
+  % stk: ct ltw rt
+  % 4. the right title
+  gsave
+    dup stringwidth pop fnfs 0.8 mul add exch % leave space took on stack
+    dup
+    pw exch stringwidth pop fnfs 0.8 mul add sub
+    hm
+    rmoveto
+    show			% right title
+  grestore
+  % stk: ct ltw rtw
+  % 5. the center title
+  gsave
+    pw 3 1 roll
+    % stk: ct pw ltw rtw
+    3 copy 
+    % Move to the center of the left room
+    sub add 2 div hm rmoveto
+    % What is the available space in here?
+    add sub fnfs 0.8 mul sub fnfs 0.8 mul sub
+    % stk: ct space_left
+%%IncludeResource: font Helvetica-Bold
+  fHelvetica-Bold fnfs scalefont setfont
+    1 setgray
+    cfshow
+  grestore
+} bind def
+
+% Function border: prints virtual page border
+/border { %def
+  gsave				% print four sides
+    0 setgray
+    x v get y v get moveto
+    0.7 setlinewidth		% of the square
+    pw 0 rlineto
+    0 ph neg rlineto
+    pw neg 0 rlineto
+    closepath stroke
+  grestore
+} bind def
+
+% Function water: prints a water mark in background
+/water { %def
+  gsave
+    scx scy moveto rotate
+%%IncludeResource: font Times-Bold
+  fTimes-Bold 100 scalefont setfont
+    .97 setgray
+    dup stringwidth pop 2 div neg -50 rmoveto
+    show
+  grestore
+} bind def
+
+% Function rhead: prints the right header
+/rhead {  %def
+  lx ly moveto
+  fHelvetica fnfs 0.8 mul scalefont setfont
+  l-show
+} bind def
+
+% Function footer (cf rf lf -> -)
+/footer {
+  fHelvetica fnfs 0.8 mul scalefont setfont
+  dx dy moveto
+  show
+
+  snx sny moveto
+  l-show
+  
+  fnx fny moveto
+  c-show
+} bind def
+
+% Function print line number (<string> # -)
+/# {
+  gsave
+    sx cw mul neg 2 div 0 rmoveto
+    f# setfont
+    c-show
+  grestore
+} bind def
+%%BeginResource: procset a2ps-color-prolog 2.0 1
+
+%% Definition of the color faces.
+/p {
+  0 0 0 FG
+  false BG
+  false UL
+  false BX
+  fCourier bfs scalefont setfont
+  Show
+} bind def
+
+/sy {
+  0 0 0 FG
+  false BG
+  fSymbol bfs scalefont setfont
+  Show
+} bind def
+
+/k {
+  false BG
+  false UL
+  false BX
+  0 0 0.9 FG
+  fCourier bfs scalefont setfont
+  Show
+} bind def
+
+/K {
+  false BG
+  false UL
+  false BX
+  0 0 0.8 FG
+  fCourier-Bold bfs scalefont setfont
+  Show
+} bind def
+
+/c {
+  false BG
+  false UL
+  false BX
+  0.8 0 0 FG
+  fCourier bfs scalefont setfont
+  Show
+} bind def
+
+/C {
+  false BG
+  false UL
+  false BX
+  0.8 0 0 FG
+  fCourier-Bold bfs scalefont setfont
+  Show
+} bind def
+
+/l {
+  0 0 0 FG
+  0.8 0.8 0 true BG
+  false UL
+  false BX
+  fCourier bfs scalefont setfont
+  Show
+} bind def
+
+/L {
+  0 0 0 FG
+  1 1 0 true BG
+  false UL
+  false BX
+  fCourier-Bold bfs scalefont setfont
+  Show
+} bind def
+
+/str {
+  false BG
+  false UL
+  false BX
+  0 0.5 0 FG
+  fTimes-Roman bfs scalefont setfont
+  Show
+} bind def
+
+/e{
+  1 0 0 true BG
+  false UL
+  true BX
+  1 1 1 FG
+  fHelvetica-Bold bfs scalefont setfont
+  Show
+} bind def
+
+% Function print line number (<string> # -)
+/# {
+  gsave
+    sx cw mul 2 div neg 0 rmoveto
+    f# setfont
+    0.8 0.1 0.1 FG
+    c-show
+  grestore
+} bind def
+%%EndResource
+%%EndProlog
+%%BeginSetup
+%%IncludeResource: font Courier
+%%IncludeResource: font Courier-Bold
+%%IncludeResource: font Times-Roman
+%%IncludeResource: font Symbol
+%%BeginResource: encoding ISO-8859-1Encoding
+/ISO-8859-1Encoding [
+/.notdef /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef 
+/.notdef /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef 
+/.notdef /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef 
+/.notdef /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef 
+/space /exclam /quotedbl /numbersign /dollar /percent /ampersand /quoteright 
+/parenleft /parenright /asterisk /plus /comma /minus /period /slash 
+/zero /one /two /three /four /five /six /seven 
+/eight /nine /colon /semicolon /less /equal /greater /question 
+/at /A /B /C /D /E /F /G 
+/H /I /J /K /L /M /N /O 
+/P /Q /R /S /T /U /V /W 
+/X /Y /Z /bracketleft /backslash /bracketright /asciicircum /underscore 
+/quoteleft /a /b /c /d /e /f /g 
+/h /i /j /k /l /m /n /o 
+/p /q /r /s /t /u /v /w 
+/x /y /z /braceleft /bar /braceright /asciitilde /.notdef 
+/.notdef /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef 
+/.notdef /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef 
+/.notdef /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef 
+/.notdef /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef /.notdef 
+/space /exclamdown /cent /sterling /currency /yen /brokenbar /section 
+/dieresis /copyright /ordfeminine /guillemotleft /logicalnot /hyphen /registered /macron 
+/degree /plusminus /twosuperior /threesuperior /acute /mu /paragraph /bullet 
+/cedilla /onesuperior /ordmasculine /guillemotright /onequarter /onehalf /threequarters /questiondown 
+/Agrave /Aacute /Acircumflex /Atilde /Adieresis /Aring /AE /Ccedilla 
+/Egrave /Eacute /Ecircumflex /Edieresis /Igrave /Iacute /Icircumflex /Idieresis 
+/Eth /Ntilde /Ograve /Oacute /Ocircumflex /Otilde /Odieresis /multiply 
+/Oslash /Ugrave /Uacute /Ucircumflex /Udieresis /Yacute /Thorn /germandbls 
+/agrave /aacute /acircumflex /atilde /adieresis /aring /ae /ccedilla 
+/egrave /eacute /ecircumflex /edieresis /igrave /iacute /icircumflex /idieresis 
+/eth /ntilde /ograve /oacute /ocircumflex /otilde /odieresis /divide 
+/oslash /ugrave /uacute /ucircumflex /udieresis /yacute /thorn /ydieresis 
+] def
+%%EndResource
+% Initialize page description variables.
+/sh 612 def
+/sw 792 def
+/llx 24 def
+/urx 768 def
+/ury 588 def
+/lly 24 def
+/#copies 1 def
+/th 15.000000 def
+/fnfs 11 def
+/bfs 7.493857 def
+/cw 4.496314 def
+
+% Dictionary for ISO-8859-1 support
+/iso1dict 6 dict begin
+  /fCourier ISO-8859-1Encoding /Courier reencode_font
+  /fCourier-Bold ISO-8859-1Encoding /Courier-Bold reencode_font
+  /fHelvetica ISO-8859-1Encoding /Helvetica reencode_font
+  /fHelvetica-Bold ISO-8859-1Encoding /Helvetica-Bold reencode_font
+  /fTimes-Bold ISO-8859-1Encoding /Times-Bold reencode_font
+  /fTimes-Roman ISO-8859-1Encoding /Times-Roman reencode_font
+currentdict end def
+/bgcolor [ 0 0 0 ] def
+/bg false def
+/ul false def
+/bx false def
+% The font for line numbering
+/f# /Helvetica findfont bfs .6 mul scalefont def
+/fSymbol /Symbol findfont def
+/hm fnfs 0.25 mul def
+/pw
+   cw 81.400000 mul
+def
+/ph
+   522.321860 th add
+def
+/pmw urx llx sub pw 2 mul sub 1 div def
+/pmh 0 def
+/v 0 def
+/x [
+  0
+  dup pmw add pw add
+] def
+/y [
+  pmh ph add 0 mul ph add
+  dup
+] def
+/scx sw 2 div def
+/scy sh 2 div def
+/snx urx def
+/sny lly 2 add def
+/dx llx def
+/dy sny def
+/fnx scx def
+/fny dy def
+/lx snx def
+/ly ury fnfs 0.8 mul sub def
+/sx 0 def
+/tab 8 def
+/x0 0 def
+/y0 0 def
+%%EndSetup
+
+%%Page: (1-2) 1
+%%BeginPageSetup
+/pagesave save def
+sh 0 translate 90 rotate
+%%EndPageSetup
+iso1dict begin
+gsave
+llx lly 12 add translate
+/v 0 store
+/x0 x v get 3.147420 add sx cw mul add store
+/y0 y v get bfs th add sub store
+x0 y0 moveto
+(#include) K
+( ") p
+(mechanism.H) str
+(") p n
+() N
+(#include) K
+( ") p
+(PelePhysics.H) str
+(") p n
+(#include) K
+( ") p
+(Derive.H) str
+(") p n
+(#include) K
+( ") p
+(PeleC.H) str
+(") p n
+(#include) K
+( ") p
+(IndexDefines.H) str
+(") p n
+() N
+(void) k n
+(pc_dervelx\() p n
+(  ) S
+(const) K
+( amrex::Box& bx,) p n
+(  amrex::FArrayBox& derfab,) N
+(  ) S
+(int) k
+( ) p
+(/*dcomp*/) c
+(,) p n
+(  ) S
+(int) k
+( ) p
+(/*ncomp*/) c
+(,) p n
+(  ) S
+(const) K
+( amrex::FArrayBox& datfab,) p n
+(  ) S
+(const) K
+( amrex::Geometry& ) p
+(/*geomdata*/) c
+(,) p n
+(  amrex::Real ) S
+(/*time*/) c
+(,) p n
+(  ) S
+(const) K
+( ) p
+(int) k
+(* ) p
+(/*bcrec*/) c
+(,) p n
+(  ) S
+(const) K
+( ) p
+(int) k
+( ) p
+(/*level*/) c
+(\)) p n
+({) N
+(  ) S
+(auto) K
+( ) p
+(const) K
+( dat = datfab.const_array\(\);) p n
+(  ) S
+(auto) K
+( velx = derfab.array\(\);) p n
+() N
+(  amrex::ParallelFor\(bx, [=] AMREX_GPU_DEVICE\() S
+(int) k
+( i, ) p
+(int) k
+( j, ) p
+(int) k
+( k\) noexcept {) p n
+(    velx\(i, j, k\) = dat\(i, j, k, UMX\) / dat\(i, j, k, URHO\);) N
+(  }\);) N
+(}) N
+() N
+(void) k n
+(pc_dervely\() p n
+(  ) S
+(const) K
+( amrex::Box& bx,) p n
+(  amrex::FArrayBox& derfab,) N
+(  ) S
+(int) k
+( ) p
+(/*dcomp*/) c
+(,) p n
+(  ) S
+(int) k
+( ) p
+(/*ncomp*/) c
+(,) p n
+(  ) S
+(const) K
+( amrex::FArrayBox& datfab,) p n
+(  ) S
+(const) K
+( amrex::Geometry& ) p
+(/*geomdata*/) c
+(,) p n
+(  amrex::Real ) S
+(/*time*/) c
+(,) p n
+(  ) S
+(const) K
+( ) p
+(int) k
+(* ) p
+(/*bcrec*/) c
+(,) p n
+(  ) S
+(const) K
+( ) p
+(int) k
+( ) p
+(/*level*/) c
+(\)) p n
+({) N
+(  ) S
+(auto) K
+( ) p
+(const) K
+( dat = datfab.const_array\(\);) p n
+(  ) S
+(auto) K
+( vely = derfab.array\(\);) p n
+() N
+(  amrex::ParallelFor\(bx, [=] AMREX_GPU_DEVICE\() S
+(int) k
+( i, ) p
+(int) k
+( j, ) p
+(int) k
+( k\) noexcept {) p n
+(    vely\(i, j, k\) = dat\(i, j, k, UMY\) / dat\(i, j, k, URHO\);) N
+(  }\);) N
+(}) N
+() N
+(void) k n
+(pc_dervelz\() p n
+(  ) S
+(const) K
+( amrex::Box& bx,) p n
+(  amrex::FArrayBox& derfab,) N
+(  ) S
+(int) k
+( ) p
+(/*dcomp*/) c
+(,) p n
+(  ) S
+(int) k
+( ) p
+(/*ncomp*/) c
+(,) p n
+(  ) S
+(const) K
+( amrex::FArrayBox& datfab,) p n
+(  ) S
+(const) K
+( amrex::Geometry& ) p
+(/*geomdata*/) c
+(,) p n
+(  amrex::Real ) S
+(/*time*/) c
+(,) p n
+(  ) S
+(const) K
+( ) p
+(int) k
+(* ) p
+(/*bcrec*/) c
+(,) p n
+(  ) S
+(const) K
+( ) p
+(int) k
+( ) p
+(/*level*/) c
+(\)) p n
+({) N
+(  ) S
+(auto) K
+( ) p
+(const) K
+( dat = datfab.const_array\(\);) p n
+(  ) S
+(auto) K
+( velz = derfab.array\(\);) p n
+() N
+(  amrex::ParallelFor\(bx, [=] AMREX_GPU_DEVICE\() S
+(int) k
+( i, ) p
+(int) k
+( j, ) p
+(int) k
+( k\) noexcept {) p n
+(    velz\(i, j, k\) = dat\(i, j, k, UMZ\) / dat\(i, j, k, URHO\);) N
+(  }\);) N
+(}) N
+() N
+(void) k n
+(pc_dermagvel\() p n
+(Derive.cpp) (Page 1/23) (Mar 06, 23 14:55) title
+border
+/v 1 store
+/x0 x v get 3.147420 add sx cw mul add store
+/y0 y v get bfs th add sub store
+x0 y0 moveto
+(  ) p
+(const) K
+( amrex::Box& bx,) p n
+(  amrex::FArrayBox& derfab,) N
+(  ) S
+(int) k
+( ) p
+(/*dcomp*/) c
+(,) p n
+(  ) S
+(int) k
+( ) p
+(/*ncomp*/) c
+(,) p n
+(  ) S
+(const) K
+( amrex::FArrayBox& datfab,) p n
+(  ) S
+(const) K
+( amrex::Geometry& ) p
+(/*geomdata*/) c
+(,) p n
+(  amrex::Real ) S
+(/*time*/) c
+(,) p n
+(  ) S
+(const) K
+( ) p
+(int) k
+(* ) p
+(/*bcrec*/) c
+(,) p n
+(  ) S
+(const) K
+( ) p
+(int) k
+( ) p
+(/*level*/) c
+(\)) p n
+({) N
+(  ) S
+(auto) K
+( ) p
+(const) K
+( dat = datfab.const_array\(\);) p n
+(  ) S
+(auto) K
+( magvel = derfab.array\(\);) p n
+() N
+(  amrex::ParallelFor\(bx, [=] AMREX_GPU_DEVICE\() S
+(int) k
+( i, ) p
+(int) k
+( j, ) p
+(int) k
+( k\) noexcept {) p n
+(    ) S
+(const) K
+( amrex::Real datinv = 1.0 / dat\(i, j, k, URHO\);) p n
+(    ) S
+(const) K
+( amrex::Real dat1 = \(dat\(i, j, k, UMX\) * datinv\);) p n
+(    ) S
+(const) K
+( amrex::Real dat2 = \(dat\(i, j, k, UMY\) * datinv\);) p n
+(    ) S
+(const) K
+( amrex::Real dat3 = \(dat\(i, j, k, UMZ\) * datinv\);) p n
+(    magvel\(i, j, k\) = sqrt\(\(dat1 * dat1\) + \(dat2 * dat2\) + \(dat3 * dat3\)\);) N
+(  }\);) N
+(}) N
+() N
+(void) k n
+(pc_dermagmom\() p n
+(  ) S
+(const) K
+( amrex::Box& bx,) p n
+(  amrex::FArrayBox& derfab,) N
+(  ) S
+(int) k
+( ) p
+(/*dcomp*/) c
+(,) p n
+(  ) S
+(int) k
+( ) p
+(/*ncomp*/) c
+(,) p n
+(  ) S
+(const) K
+( amrex::FArrayBox& datfab,) p n
+(  ) S
+(const) K
+( amrex::Geometry& ) p
+(/*geomdata*/) c
+(,) p n
+(  amrex::Real ) S
+(/*time*/) c
+(,) p n
+(  ) S
+(const) K
+( ) p
+(int) k
+(* ) p
+(/*bcrec*/) c
+(,) p n
+(  ) S
+(const) K
+( ) p
+(int) k
+( ) p
+(/*level*/) c
+(\)) p n
+({) N
+(  ) S
+(auto) K
+( ) p
+(const) K
+( dat = datfab.const_array\(\);) p n
+(  ) S
+(auto) K
+( magmom = derfab.array\(\);) p n
+() N
+(  amrex::ParallelFor\(bx, [=] AMREX_GPU_DEVICE\() S
+(int) k
+( i, ) p
+(int) k
+( j, ) p
+(int) k
+( k\) noexcept {) p n
+(    magmom\(i, j, k\) = sqrt\() N
+(      dat\(i, j, k, UMX\) * dat\(i, j, k, UMX\) +) N
+(      dat\(i, j, k, UMY\) * dat\(i, j, k, UMY\) +) N
+(      dat\(i, j, k, UMZ\) * dat\(i, j, k, UMZ\)\);) N
+(  }\);) N
+(}) N
+() N
+(void) k n
+(pc_derkineng\() p n
+(  ) S
+(const) K
+( amrex::Box& bx,) p n
+(  amrex::FArrayBox& derfab,) N
+(  ) S
+(int) k
+( ) p
+(/*dcomp*/) c
+(,) p n
+(  ) S
+(int) k
+( ) p
+(/*ncomp*/) c
+(,) p n
+(  ) S
+(const) K
+( amrex::FArrayBox& datfab,) p n
+(  ) S
+(const) K
+( amrex::Geometry& ) p
+(/*geomdata*/) c
+(,) p n
+(  amrex::Real ) S
+(/*time*/) c
+(,) p n
+(  ) S
+(const) K
+( ) p
+(int) k
+(* ) p
+(/*bcrec*/) c
+(,) p n
+(  ) S
+(const) K
+( ) p
+(int) k
+( ) p
+(/*level*/) c
+(\)) p n
+({) N
+(  ) S
+(auto) K
+( ) p
+(const) K
+( dat = datfab.const_array\(\);) p n
+(  ) S
+(auto) K
+( kineng = derfab.array\(\);) p n
+() N
+(  amrex::ParallelFor\(bx, [=] AMREX_GPU_DEVICE\() S
+(int) k
+( i, ) p
+(int) k
+( j, ) p
+(int) k
+( k\) noexcept {) p n
+(    ) S
+(const) K
+( amrex::Real datxsq = dat\(i, j, k, UMX\) * dat\(i, j, k, UMX\);) p n
+(    ) S
+(const) K
+( amrex::Real datysq = dat\(i, j, k, UMY\) * dat\(i, j, k, UMY\);) p n
+(    ) S
+(const) K
+( amrex::Real datzsq = dat\(i, j, k, UMZ\) * dat\(i, j, k, UMZ\);) p n
+(    kineng\(i, j, k\) = 0.5 / dat\(i, j, k, URHO\) * \(datxsq + datysq + datzsq\);) N
+(  }\);) N
+(}) N
+() N
+(void) k n
+(Derive.cpp) (Page 2/23) (Mar 06, 23 14:55) title
+border
+grestore
+(Printed by Jay Standridge) rhead
+(Derive.cpp) (1/12) (Monday March 06, 2023) footer
+end % of iso1dict
+pagesave restore
+showpage
+%%Page: (3-4) 2
+%%BeginPageSetup
+/pagesave save def
+sh 0 translate 90 rotate
+%%EndPageSetup
+iso1dict begin
+gsave
+llx lly 12 add translate
+/v 0 store
+/x0 x v get 3.147420 add sx cw mul add store
+/y0 y v get bfs th add sub store
+x0 y0 moveto
+(pc_dereint1\() p n
+(  ) S
+(const) K
+( amrex::Box& bx,) p n
+(  amrex::FArrayBox& derfab,) N
+(  ) S
+(int) k
+( ) p
+(/*dcomp*/) c
+(,) p n
+(  ) S
+(int) k
+( ) p
+(/*ncomp*/) c
+(,) p n
+(  ) S
+(const) K
+( amrex::FArrayBox& datfab,) p n
+(  ) S
+(const) K
+( amrex::Geometry& ) p
+(/*geomdata*/) c
+(,) p n
+(  amrex::Real ) S
+(/*time*/) c
+(,) p n
+(  ) S
+(const) K
+( ) p
+(int) k
+(* ) p
+(/*bcrec*/) c
+(,) p n
+(  ) S
+(const) K
+( ) p
+(int) k
+( ) p
+(/*level*/) c
+(\)) p n
+({) N
+(  ) S
+(// Compute internal energy from \(rho E\).) c n
+(  ) p
+(auto) K
+( ) p
+(const) K
+( dat = datfab.const_array\(\);) p n
+(  ) S
+(auto) K
+( e = derfab.array\(\);) p n
+() N
+(  amrex::ParallelFor\(bx, [=] AMREX_GPU_DEVICE\() S
+(int) k
+( i, ) p
+(int) k
+( j, ) p
+(int) k
+( k\) noexcept {) p n
+(    ) S
+(const) K
+( amrex::Real rhoInv = 1.0 / dat\(i, j, k, URHO\);) p n
+(    ) S
+(const) K
+( amrex::Real ux = dat\(i, j, k, UMX\) * rhoInv;) p n
+(    ) S
+(const) K
+( amrex::Real uy = dat\(i, j, k, UMY\) * rhoInv;) p n
+(    ) S
+(const) K
+( amrex::Real uz = dat\(i, j, k, UMZ\) * rhoInv;) p n
+(    e\(i, j, k\) =) N
+(      dat\(i, j, k, UEDEN\) * rhoInv - 0.5 * \(ux * ux + uy * uy + uz * uz\);) N
+(  }\);) N
+(}) N
+() N
+(void) k n
+(pc_dereint2\() p n
+(  ) S
+(const) K
+( amrex::Box& bx,) p n
+(  amrex::FArrayBox& derfab,) N
+(  ) S
+(int) k
+( ) p
+(/*dcomp*/) c
+(,) p n
+(  ) S
+(int) k
+( ) p
+(/*ncomp*/) c
+(,) p n
+(  ) S
+(const) K
+( amrex::FArrayBox& datfab,) p n
+(  ) S
+(const) K
+( amrex::Geometry& ) p
+(/*geomdata*/) c
+(,) p n
+(  amrex::Real ) S
+(/*time*/) c
+(,) p n
+(  ) S
+(const) K
+( ) p
+(int) k
+(* ) p
+(/*bcrec*/) c
+(,) p n
+(  ) S
+(const) K
+( ) p
+(int) k
+( ) p
+(/*level*/) c
+(\)) p n
+({) N
+(  ) S
+(// Compute internal energy from \(rho e\).) c n
+(  ) p
+(auto) K
+( ) p
+(const) K
+( dat = datfab.const_array\(\);) p n
+(  ) S
+(auto) K
+( e = derfab.array\(\);) p n
+() N
+(  amrex::ParallelFor\(bx, [=] AMREX_GPU_DEVICE\() S
+(int) k
+( i, ) p
+(int) k
+( j, ) p
+(int) k
+( k\) noexcept {) p n
+(    e\(i, j, k\) = dat\(i, j, k, UEINT\) / dat\(i, j, k, URHO\);) N
+(  }\);) N
+(}) N
+() N
+(void) k n
+(pc_derlogden\() p n
+(  ) S
+(const) K
+( amrex::Box& bx,) p n
+(  amrex::FArrayBox& derfab,) N
+(  ) S
+(int) k
+( ) p
+(/*dcomp*/) c
+(,) p n
+(  ) S
+(int) k
+( ) p
+(/*ncomp*/) c
+(,) p n
+(  ) S
+(const) K
+( amrex::FArrayBox& datfab,) p n
+(  ) S
+(const) K
+( amrex::Geometry& ) p
+(/*geomdata*/) c
+(,) p n
+(  amrex::Real ) S
+(/*time*/) c
+(,) p n
+(  ) S
+(const) K
+( ) p
+(int) k
+(* ) p
+(/*bcrec*/) c
+(,) p n
+(  ) S
+(const) K
+( ) p
+(int) k
+( ) p
+(/*level*/) c
+(\)) p n
+({) N
+(  ) S
+(auto) K
+( ) p
+(const) K
+( dat = datfab.const_array\(\);) p n
+(  ) S
+(auto) K
+( logden = derfab.array\(\);) p n
+() N
+(  amrex::ParallelFor\(bx, [=] AMREX_GPU_DEVICE\() S
+(int) k
+( i, ) p
+(int) k
+( j, ) p
+(int) k
+( k\) noexcept {) p n
+(    logden\(i, j, k\) = log10\(dat\(i, j, k\)\);) N
+(  }\);) N
+(}) N
+() N
+(void) k n
+(pc_derspec\() p n
+(  ) S
+(const) K
+( amrex::Box& bx,) p n
+(Derive.cpp) (Page 3/23) (Mar 06, 23 14:55) title
+border
+/v 1 store
+/x0 x v get 3.147420 add sx cw mul add store
+/y0 y v get bfs th add sub store
+x0 y0 moveto
+(  amrex::FArrayBox& derfab,) p n
+(  ) S
+(int) k
+( ) p
+(/*dcomp*/) c
+(,) p n
+(  ) S
+(int) k
+( ) p
+(/*ncomp*/) c
+(,) p n
+(  ) S
+(const) K
+( amrex::FArrayBox& datfab,) p n
+(  ) S
+(const) K
+( amrex::Geometry& ) p
+(/*geomdata*/) c
+(,) p n
+(  amrex::Real ) S
+(/*time*/) c
+(,) p n
+(  ) S
+(const) K
+( ) p
+(int) k
+(* ) p
+(/*bcrec*/) c
+(,) p n
+(  ) S
+(const) K
+( ) p
+(int) k
+( ) p
+(/*level*/) c
+(\)) p n
+({) N
+(  ) S
+(auto) K
+( ) p
+(const) K
+( dat = datfab.const_array\(\);) p n
+(  ) S
+(auto) K
+( spec = derfab.array\(\);) p n
+() N
+(  amrex::ParallelFor\() N
+(    bx, NUM_SPECIES, [=] AMREX_GPU_DEVICE\() S
+(int) k
+( i, ) p
+(int) k
+( j, ) p
+(int) k
+( k, ) p
+(int) k
+( n\) noexcept {) p n
+(      spec\(i, j, k, n\) = dat\(i, j, k, UFS + n\) / dat\(i, j, k, URHO\);) N
+(    }\);) N
+(}) N
+() N
+(void) k n
+(pc_deradv\() p n
+(  ) S
+(const) K
+( amrex::Box& bx,) p n
+(  amrex::FArrayBox& derfab,) N
+(  ) S
+(int) k
+( ) p
+(/*dcomp*/) c
+(,) p n
+(  ) S
+(int) k
+( ) p
+(/*ncomp*/) c
+(,) p n
+(  ) S
+(const) K
+( amrex::FArrayBox& datfab,) p n
+(  ) S
+(const) K
+( amrex::Geometry& ) p
+(/*geomdata*/) c
+(,) p n
+(  amrex::Real ) S
+(/*time*/) c
+(,) p n
+(  ) S
+(const) K
+( ) p
+(int) k
+(* ) p
+(/*bcrec*/) c
+(,) p n
+(  ) S
+(const) K
+( ) p
+(int) k
+( ) p
+(/*level*/) c
+(\)) p n
+({) N
+(  ) S
+(auto) K
+( ) p
+(const) K
+( dat = datfab.const_array\(\);) p n
+(  ) S
+(auto) K
+( adv = derfab.array\(\);) p n
+() N
+(  amrex::ParallelFor\() N
+(    bx, NUM_ADV, [=] AMREX_GPU_DEVICE\() S
+(int) k
+( i, ) p
+(int) k
+( j, ) p
+(int) k
+( k, ) p
+(int) k
+( n\) noexcept {) p n
+(      adv\(i, j, k, n\) = dat\(i, j, k, UFA + n\) / dat\(i, j, k, URHO\);) N
+(    }\);) N
+(}) N
+() N
+(void) k n
+(pc_dermagvort\() p n
+(  ) S
+(const) K
+( amrex::Box& bx,) p n
+(  amrex::FArrayBox& derfab,) N
+(  ) S
+(int) k
+( ) p
+(/*dcomp*/) c
+(,) p n
+(  ) S
+(int) k
+( ) p
+(/*ncomp*/) c
+(,) p n
+(  ) S
+(const) K
+( amrex::FArrayBox& datfab,) p n
+(  ) S
+(const) K
+( amrex::Geometry& geomdata,) p n
+(  amrex::Real ) S
+(/*time*/) c
+(,) p n
+(  ) S
+(const) K
+( ) p
+(int) k
+(* ) p
+(/*bcrec*/) c
+(,) p n
+(  ) S
+(int) k
+( ) p
+(/*level*/) c
+(\)) p n
+({) N
+(  ) S
+(auto) K
+( ) p
+(const) K
+( dat = datfab.const_array\(\);) p n
+(  ) S
+(auto) K
+( vort = derfab.array\(\);) p n
+() N
+(  ) S
+(const) K
+( amrex::Box& gbx = amrex::grow\(bx, 1\);) p n
+() N
+(  amrex::FArrayBox local\(gbx, 3, amrex::The_Async_Arena\(\)\);) N
+(  ) S
+(auto) K
+( larr = local.array\(\);) p n
+() N
+(  ) S
+(const) K
+( ) p
+(auto) K
+(& flag_fab = amrex::getEBCellFlagFab\(datfab\);) p n
+(  ) S
+(const) K
+( ) p
+(auto) K
+(& typ = flag_fab.getType\(bx\);) p n
+(  ) S
+(if) K
+( \(typ == amrex::FabType::covered\) {) p n
+(    derfab.setVal<amrex::RunOn::Device>\(0.0, bx\);) N
+(    ) S
+(return) K
+(;) p n
+(  }) N
+(  ) S
+(const) K
+( ) p
+(auto) K
+(& flags = flag_fab.const_array\(\);) p n
+(  ) S
+(const) K
+( ) p
+(bool) k
+( all_regular = typ == amrex::FabType::regular;) p n
+() N
+(  ) S
+(// Convert momentum to velocity.) c n
+(Derive.cpp) (Page 4/23) (Mar 06, 23 14:55) title
+border
+grestore
+(Printed by Jay Standridge) rhead
+(Derive.cpp) (2/12) (Monday March 06, 2023) footer
+end % of iso1dict
+pagesave restore
+showpage
+%%Page: (5-6) 3
+%%BeginPageSetup
+/pagesave save def
+sh 0 translate 90 rotate
+%%EndPageSetup
+iso1dict begin
+gsave
+llx lly 12 add translate
+/v 0 store
+/x0 x v get 3.147420 add sx cw mul add store
+/y0 y v get bfs th add sub store
+x0 y0 moveto
+(  amrex::ParallelFor\(gbx, [=] AMREX_GPU_DEVICE\() p
+(int) k
+( i, ) p
+(int) k
+( j, ) p
+(int) k
+( k\) noexcept {) p n
+(    ) S
+(const) K
+( amrex::Real rhoInv = 1.0 / dat\(i, j, k, URHO\);) p n
+(    AMREX_D_TERM\(larr\(i, j, k, 0\) = dat\(i, j, k, UMX\) * rhoInv;) N
+(                 , larr\(i, j, k, 1\) = dat\(i, j, k, UMY\) * rhoInv;) N
+(                 , larr\(i, j, k, 2\) = dat\(i, j, k, UMZ\) * rhoInv;\)) N
+(  }\);) N
+() N
+(  AMREX_D_TERM\() S
+(const) K
+( amrex::Real dx = geomdata.CellSize\(0\);) p n
+(               , ) S
+(const) K
+( amrex::Real dy = geomdata.CellSize\(1\);) p n
+(               , ) S
+(const) K
+( amrex::Real dz = geomdata.CellSize\(2\);\);) p n
+() N
+(  ) S
+(// Calculate vorticity.) c n
+(  amrex::ParallelFor\(bx, [=] AMREX_GPU_DEVICE\() p
+(int) k
+( i, ) p
+(int) k
+( j, ) p
+(int) k
+( k\) noexcept {) p n
+(    AMREX_D_TERM\() S
+(int) k
+( im; ) p
+(int) k
+( ip;, ) p
+(int) k
+( jm; ) p
+(int) k
+( jp;, ) p
+(int) k
+( km; ) p
+(int) k
+( kp;\)) p n
+() N
+(    ) S
+(// if fab is all regular -> call regular idx and weights) c n
+(    ) p
+(// otherwise) c n
+(    AMREX_D_TERM\(get_idx\(i, 0, all_regular, flags\(i, j, k\), im, ip\);) p n
+(                 , get_idx\(j, 1, all_regular, flags\(i, j, k\), jm, jp\);) N
+(                 , get_idx\(k, 2, all_regular, flags\(i, j, k\), km, kp\);\)) N
+(    AMREX_D_TERM\() S
+(const) K
+( amrex::Real wi = get_weight\(im, ip\);) p n
+(                 , ) S
+(const) K
+( amrex::Real wj = get_weight\(jm, jp\);) p n
+(                 , ) S
+(const) K
+( amrex::Real wk = get_weight\(km, kp\);\)) p n
+() N
+(    AMREX_D_TERM\() N
+(      vort\(i, j, k\) = 0.0 * dx;) N
+(      ,) N
+(      ) S
+(const) K
+( amrex::Real vx = wi * \(larr\(ip, j, k, 1\) - larr\(im, j, k, 1\)\) / dx;) p n
+(      ) S
+(const) K
+( amrex::Real uy = wj * \(larr\(i, jp, k, 0\) - larr\(i, jm, k, 0\)\) / dy;) p n
+(      ) S
+(const) K
+( amrex::Real v3 = vx - uy;) p n
+(      ,) N
+(      ) S
+(const) K
+( amrex::Real wx = wi * \(larr\(ip, j, k, 2\) - larr\(im, j, k, 2\)\) / dx;) p n
+(      ) S
+(const) K
+( amrex::Real wy = wj * \(larr\(i, jp, k, 2\) - larr\(i, jm, k, 2\)\) / dy;) p n
+(      ) S
+(const) K
+( amrex::Real uz = wk * \(larr\(i, j, kp, 0\) - larr\(i, j, km, 0\)\) / dz;) p n
+(      ) S
+(const) K
+( amrex::Real vz = wk * \(larr\(i, j, kp, 1\) - larr\(i, j, km, 1\)\) / dz;) p n
+(      ) S
+(const) K
+( amrex::Real v1 = wy - vz; ) p
+(const) K
+( amrex::Real v2 = uz - wx;\);) p n
+(    vort\(i, j, k\) = sqrt\(AMREX_D_TERM\(0., +v3 * v3, +v1 * v1 + v2 * v2\)\);) N
+(  }\);) N
+(}) N
+() N
+(void) k n
+(pc_derdivu\() p n
+(  ) S
+(const) K
+( amrex::Box& bx,) p n
+(  amrex::FArrayBox& derfab,) N
+(  ) S
+(int) k
+( ) p
+(/*dcomp*/) c
+(,) p n
+(  ) S
+(int) k
+( ) p
+(/*ncomp*/) c
+(,) p n
+(  ) S
+(const) K
+( amrex::FArrayBox& datfab,) p n
+(  ) S
+(const) K
+( amrex::Geometry& geomdata,) p n
+(  amrex::Real ) S
+(/*time*/) c
+(,) p n
+(  ) S
+(const) K
+( ) p
+(int) k
+(* ) p
+(/*bcrec*/) c
+(,) p n
+(  ) S
+(int) k
+( ) p
+(/*level*/) c
+(\)) p n
+({) N
+(  ) S
+(auto) K
+( ) p
+(const) K
+( dat = datfab.const_array\(\);) p n
+(  ) S
+(auto) K
+( divu = derfab.array\(\);) p n
+() N
+(  ) S
+(const) K
+( ) p
+(auto) K
+(& flag_fab = amrex::getEBCellFlagFab\(datfab\);) p n
+(  ) S
+(const) K
+( ) p
+(auto) K
+(& typ = flag_fab.getType\(bx\);) p n
+(  ) S
+(if) K
+( \(typ == amrex::FabType::covered\) {) p n
+(    derfab.setVal<amrex::RunOn::Device>\(0.0, bx\);) N
+(    ) S
+(return) K
+(;) p n
+(  }) N
+(  ) S
+(const) K
+( ) p
+(auto) K
+(& flags = flag_fab.const_array\(\);) p n
+(  ) S
+(const) K
+( ) p
+(bool) k
+( all_regular = typ == amrex::FabType::regular;) p n
+() N
+(  AMREX_D_TERM\() S
+(const) K
+( amrex::Real dx = geomdata.CellSize\(0\);) p n
+(               , ) S
+(const) K
+( amrex::Real dy = geomdata.CellSize\(1\);) p n
+(               , ) S
+(const) K
+( amrex::Real dz = geomdata.CellSize\(2\);\);) p n
+() N
+(  amrex::ParallelFor\(bx, [=] AMREX_GPU_DEVICE\() S
+(int) k
+( i, ) p
+(int) k
+( j, ) p
+(int) k
+( k\) noexcept {) p n
+(Derive.cpp) (Page 5/23) (Mar 06, 23 14:55) title
+border
+/v 1 store
+/x0 x v get 3.147420 add sx cw mul add store
+/y0 y v get bfs th add sub store
+x0 y0 moveto
+(    AMREX_D_TERM\() p
+(int) k
+( im; ) p
+(int) k
+( ip;, ) p
+(int) k
+( jm; ) p
+(int) k
+( jp;, ) p
+(int) k
+( km; ) p
+(int) k
+( kp;\)) p n
+(    AMREX_D_TERM\(get_idx\(i, 0, all_regular, flags\(i, j, k\), im, ip\);) N
+(                 , get_idx\(j, 1, all_regular, flags\(i, j, k\), jm, jp\);) N
+(                 , get_idx\(k, 2, all_regular, flags\(i, j, k\), km, kp\);\)) N
+(    AMREX_D_TERM\() S
+(const) K
+( amrex::Real wi = get_weight\(im, ip\);) p n
+(                 , ) S
+(const) K
+( amrex::Real wj = get_weight\(jm, jp\);) p n
+(                 , ) S
+(const) K
+( amrex::Real wk = get_weight\(km, kp\);\)) p n
+() N
+(    AMREX_D_TERM\() N
+(      ) S
+(const) K
+( amrex::Real uhi = dat\(ip, j, k, UMX\) / dat\(ip, j, k, URHO\);) p n
+(      ) S
+(const) K
+( amrex::Real ulo = dat\(im, j, k, UMX\) / dat\(im, j, k, URHO\);) p n
+(      , ) S
+(const) K
+( amrex::Real vhi = dat\(i, jp, k, UMY\) / dat\(i, jp, k, URHO\);) p n
+(      ) S
+(const) K
+( amrex::Real vlo = dat\(i, jm, k, UMY\) / dat\(i, jm, k, URHO\);) p n
+(      , ) S
+(const) K
+( amrex::Real whi = dat\(i, j, kp, UMZ\) / dat\(i, j, kp, URHO\);) p n
+(      ) S
+(const) K
+( amrex::Real wlo = dat\(i, j, km, UMZ\) / dat\(i, j, km, URHO\);\);) p n
+(    divu\(i, j, k\) = AMREX_D_TERM\() N
+(      wi * \(uhi - ulo\) / dx, +wj * \(vhi - vlo\) / dy, +wk * \(whi - wlo\) / dz\);) N
+(  }\);) N
+(}) N
+() N
+(void) k n
+(pc_derenstrophy\() p n
+(  ) S
+(const) K
+( amrex::Box& bx,) p n
+(  amrex::FArrayBox& derfab,) N
+(  ) S
+(int) k
+( ) p
+(/*dcomp*/) c
+(,) p n
+(  ) S
+(int) k
+( ) p
+(/*ncomp*/) c
+(,) p n
+(  ) S
+(const) K
+( amrex::FArrayBox& datfab,) p n
+(  ) S
+(const) K
+( amrex::Geometry& geomdata,) p n
+(  amrex::Real ) S
+(/*time*/) c
+(,) p n
+(  ) S
+(const) K
+( ) p
+(int) k
+(* ) p
+(/*bcrec*/) c
+(,) p n
+(  ) S
+(int) k
+( ) p
+(/*level*/) c
+(\)) p n
+({) N
+(  ) S
+(// This routine will derive enstrophy  = 1/2 rho \(x_vorticity^2 +) c n
+(  ) p
+(// y_vorticity^2 + z_vorticity^2\)) c n
+(  ) p
+(auto) K
+( ) p
+(const) K
+( dat = datfab.const_array\(\);) p n
+(  ) S
+(auto) K
+( enstrophy = derfab.array\(\);) p n
+() N
+(  ) S
+(const) K
+( amrex::Box& gbx = amrex::grow\(bx, 1\);) p n
+() N
+(  amrex::FArrayBox local\(gbx, 3, amrex::The_Async_Arena\(\)\);) N
+(  ) S
+(auto) K
+( larr = local.array\(\);) p n
+() N
+(  ) S
+(const) K
+( ) p
+(auto) K
+(& flag_fab = amrex::getEBCellFlagFab\(datfab\);) p n
+(  ) S
+(const) K
+( ) p
+(auto) K
+(& typ = flag_fab.getType\(bx\);) p n
+(  ) S
+(if) K
+( \(typ == amrex::FabType::covered\) {) p n
+(    derfab.setVal<amrex::RunOn::Device>\(0.0, bx\);) N
+(    ) S
+(return) K
+(;) p n
+(  }) N
+(  ) S
+(const) K
+( ) p
+(auto) K
+(& flags = flag_fab.const_array\(\);) p n
+(  ) S
+(const) K
+( ) p
+(bool) k
+( all_regular = typ == amrex::FabType::regular;) p n
+() N
+(  ) S
+(// Convert momentum to velocity.) c n
+(  amrex::ParallelFor\(gbx, [=] AMREX_GPU_DEVICE\() p
+(int) k
+( i, ) p
+(int) k
+( j, ) p
+(int) k
+( k\) noexcept {) p n
+(    ) S
+(const) K
+( amrex::Real rhoInv = 1.0 / dat\(i, j, k, URHO\);) p n
+(    larr\(i, j, k, 0\) = dat\(i, j, k, UMX\) * rhoInv;) N
+(    larr\(i, j, k, 1\) = dat\(i, j, k, UMY\) * rhoInv;) N
+(    larr\(i, j, k, 2\) = dat\(i, j, k, UMZ\) * rhoInv;) N
+(  }\);) N
+() N
+(  AMREX_D_TERM\() S
+(const) K
+( amrex::Real dx = geomdata.CellSize\(0\);) p n
+(               , ) S
+(const) K
+( amrex::Real dy = geomdata.CellSize\(1\);) p n
+(               , ) S
+(const) K
+( amrex::Real dz = geomdata.CellSize\(2\);\);) p n
+() N
+(  ) S
+(// Calculate enstrophy.) c n
+(  amrex::ParallelFor\(bx, [=] AMREX_GPU_DEVICE\() p
+(int) k
+( i, ) p
+(int) k
+( j, ) p
+(int) k
+( k\) noexcept {) p n
+(    AMREX_D_TERM\() S
+(int) k
+( im; ) p
+(int) k
+( ip;, ) p
+(int) k
+( jm; ) p
+(int) k
+( jp;, ) p
+(int) k
+( km; ) p
+(int) k
+( kp;\)) p n
+(    AMREX_D_TERM\(get_idx\(i, 0, all_regular, flags\(i, j, k\), im, ip\);) N
+(                 , get_idx\(j, 1, all_regular, flags\(i, j, k\), jm, jp\);) N
+(                 , get_idx\(k, 2, all_regular, flags\(i, j, k\), km, kp\);\)) N
+(Derive.cpp) (Page 6/23) (Mar 06, 23 14:55) title
+border
+grestore
+(Printed by Jay Standridge) rhead
+(Derive.cpp) (3/12) (Monday March 06, 2023) footer
+end % of iso1dict
+pagesave restore
+showpage
+%%Page: (7-8) 4
+%%BeginPageSetup
+/pagesave save def
+sh 0 translate 90 rotate
+%%EndPageSetup
+iso1dict begin
+gsave
+llx lly 12 add translate
+/v 0 store
+/x0 x v get 3.147420 add sx cw mul add store
+/y0 y v get bfs th add sub store
+x0 y0 moveto
+(    AMREX_D_TERM\() p
+(const) K
+( amrex::Real wi = get_weight\(im, ip\);) p n
+(                 , ) S
+(const) K
+( amrex::Real wj = get_weight\(jm, jp\);) p n
+(                 , ) S
+(const) K
+( amrex::Real wk = get_weight\(km, kp\);\)) p n
+() N
+(    AMREX_D_TERM\() N
+(      enstrophy\(i, j, k\) = 0.0 * dx;) N
+(      ,) N
+(      ) S
+(const) K
+( amrex::Real vx = wi * \(larr\(ip, j, k, 1\) - larr\(im, j, k, 1\)\) / dx;) p n
+(      ) S
+(const) K
+( amrex::Real uy = wj * \(larr\(i, jp, k, 0\) - larr\(i, jm, k, 0\)\) / dy;) p n
+(      ) S
+(const) K
+( amrex::Real v3 = vx - uy;) p n
+(      ,) N
+(      ) S
+(const) K
+( amrex::Real wx = wi * \(larr\(ip, j, k, 2\) - larr\(im, j, k, 2\)\) / dx;) p n
+() N
+(      ) S
+(const) K
+( amrex::Real wy = wj * \(larr\(i, jp, k, 2\) - larr\(i, jm, k, 2\)\) / dy;) p n
+() N
+(      ) S
+(const) K
+( amrex::Real uz = wk * \(larr\(i, j, kp, 0\) - larr\(i, j, km, 0\)\) / dz;) p n
+(      ) S
+(const) K
+( amrex::Real vz = wk * \(larr\(i, j, kp, 1\) - larr\(i, j, km, 1\)\) / dz;) p n
+() N
+(      ) S
+(const) K
+( amrex::Real v1 = wy - vz; ) p
+(const) K
+( amrex::Real v2 = uz - wx;\);) p n
+(    enstrophy\(i, j, k\) = 0.5 * dat\(i, j, k, URHO\) *) N
+(                         \(AMREX_D_TERM\(0., +v3 * v3, +v1 * v1 + v2 * v2\)\);) N
+(  }\);) N
+(}) N
+() N
+(void) k n
+(pc_dernull\() p n
+(  ) S
+(const) K
+( amrex::Box& ) p
+(/*bx*/) c
+(,) p n
+(  amrex::FArrayBox& ) S
+(/*derfab*/) c
+(,) p n
+(  ) S
+(int) k
+( ) p
+(/*dcomp*/) c
+(,) p n
+(  ) S
+(int) k
+( ) p
+(/*ncomp*/) c
+(,) p n
+(  ) S
+(const) K
+( amrex::FArrayBox& ) p
+(/*datfab*/) c
+(,) p n
+(  ) S
+(const) K
+( amrex::Geometry& ) p
+(/*geomdata*/) c
+(,) p n
+(  amrex::Real ) S
+(/*time*/) c
+(,) p n
+(  ) S
+(const) K
+( ) p
+(int) k
+(* ) p
+(/*bcrec*/) c
+(,) p n
+(  ) S
+(const) K
+( ) p
+(int) k
+( ) p
+(/*level*/) c
+(\)) p n
+({) N
+(  ) S
+(// This routine is used by particle_count.  Yes it does nothing.) c n
+(}) p n
+() N
+(void) k n
+(pc_dermolefrac\() p n
+(  ) S
+(const) K
+( amrex::Box& bx,) p n
+(  amrex::FArrayBox& derfab,) N
+(  ) S
+(int) k
+( ) p
+(/*dcomp*/) c
+(,) p n
+(  ) S
+(int) k
+( ) p
+(/*ncomp*/) c
+(,) p n
+(  ) S
+(const) K
+( amrex::FArrayBox& datfab,) p n
+(  ) S
+(const) K
+( amrex::Geometry& ) p
+(/*geomdata*/) c
+(,) p n
+(  amrex::Real ) S
+(/*time*/) c
+(,) p n
+(  ) S
+(const) K
+( ) p
+(int) k
+(* ) p
+(/*bcrec*/) c
+(,) p n
+(  ) S
+(const) K
+( ) p
+(int) k
+( ) p
+(/*level*/) c
+(\)) p n
+({) N
+(  ) S
+(// Derive the mole fractions of the species) c n
+(  ) p
+(auto) K
+( ) p
+(const) K
+( dat = datfab.const_array\(\);) p n
+(  ) S
+(auto) K
+( spec = derfab.array\(\);) p n
+() N
+(  amrex::ParallelFor\(bx, [=] AMREX_GPU_DEVICE\() S
+(int) k
+( i, ) p
+(int) k
+( j, ) p
+(int) k
+( k\) noexcept {) p n
+(    amrex::Real mass[NUM_SPECIES];) N
+(    amrex::Real mole[NUM_SPECIES];) N
+(    ) S
+(const) K
+( amrex::Real rhoInv = 1.0 / dat\(i, j, k, URHO\);) p n
+() N
+(    ) S
+(for) K
+( \() p
+(int) k
+( n = 0; n < NUM_SPECIES; n++\) {) p n
+(      mass[n] = dat\(i, j, k, UFS + n\) * rhoInv;) N
+(    }) N
+(    ) S
+(auto) K
+( eos = pele::physics::PhysicsType::eos\(\);) p n
+(    eos.Y2X\(mass, mole\);) N
+(    ) S
+(for) K
+( \() p
+(int) k
+( n = 0; n < NUM_SPECIES; n++\) {) p n
+(      spec\(i, j, k, n\) = mole[n];) N
+(    }) N
+(  }\);) N
+(Derive.cpp) (Page 7/23) (Mar 06, 23 14:55) title
+border
+/v 1 store
+/x0 x v get 3.147420 add sx cw mul add store
+/y0 y v get bfs th add sub store
+x0 y0 moveto
+(}) p n
+() N
+(void) k n
+(pc_dersoundspeed\() p n
+(  ) S
+(const) K
+( amrex::Box& bx,) p n
+(  amrex::FArrayBox& derfab,) N
+(  ) S
+(int) k
+( ) p
+(/*dcomp*/) c
+(,) p n
+(  ) S
+(int) k
+( ) p
+(/*ncomp*/) c
+(,) p n
+(  ) S
+(const) K
+( amrex::FArrayBox& datfab,) p n
+(  ) S
+(const) K
+( amrex::Geometry& ) p
+(/*geomdata*/) c
+(,) p n
+(  amrex::Real ) S
+(/*time*/) c
+(,) p n
+(  ) S
+(const) K
+( ) p
+(int) k
+(* ) p
+(/*bcrec*/) c
+(,) p n
+(  ) S
+(const) K
+( ) p
+(int) k
+( ) p
+(/*level*/) c
+(\)) p n
+({) N
+(  ) S
+(auto) K
+( ) p
+(const) K
+( dat = datfab.const_array\(\);) p n
+(  ) S
+(auto) K
+( cfab = derfab.array\(\);) p n
+() N
+(  amrex::ParallelFor\(bx, [=] AMREX_GPU_DEVICE\() S
+(int) k
+( i, ) p
+(int) k
+( j, ) p
+(int) k
+( k\) noexcept {) p n
+(    ) S
+(const) K
+( amrex::Real rho = dat\(i, j, k, URHO\);) p n
+(    ) S
+(const) K
+( amrex::Real rhoInv = 1.0 / rho;) p n
+(    ) S
+(const) K
+( amrex::Real T = dat\(i, j, k, UTEMP\);) p n
+(    amrex::Real massfrac[NUM_SPECIES];) N
+(    amrex::Real c;) N
+(    ) S
+(for) K
+( \() p
+(int) k
+( n = 0; n < NUM_SPECIES; ++n\) {) p n
+(      massfrac[n] = dat\(i, j, k, UFS + n\) * rhoInv;) N
+(    }) N
+(    ) S
+(auto) K
+( eos = pele::physics::PhysicsType::eos\(\);) p n
+(    eos.RTY2Cs\(rho, T, massfrac, c\);) N
+(    cfab\(i, j, k\) = c;) N
+(  }\);) N
+(}) N
+() N
+(void) k n
+(pc_derentropy\() p n
+(  ) S
+(const) K
+( amrex::Box& bx,) p n
+(  amrex::FArrayBox& derfab,) N
+(  ) S
+(int) k
+( ) p
+(/*dcomp*/) c
+(,) p n
+(  ) S
+(int) k
+( ) p
+(/*ncomp*/) c
+(,) p n
+(  ) S
+(const) K
+( amrex::FArrayBox& ) p
+(/*datfab*/) c
+(,) p n
+(  ) S
+(const) K
+( amrex::Geometry& ) p
+(/*geomdata*/) c
+(,) p n
+(  amrex::Real ) S
+(/*time*/) c
+(,) p n
+(  ) S
+(const) K
+( ) p
+(int) k
+(* ) p
+(/*bcrec*/) c
+(,) p n
+(  ) S
+(const) K
+( ) p
+(int) k
+( ) p
+(/*level*/) c
+(\)) p n
+({) N
+(  ) S
+(// auto const dat = datfab.const_array\(\);) c n
+(  ) p
+(auto) K
+( sfab = derfab.array\(\);) p n
+() N
+(  amrex::ParallelFor\(bx, [=] AMREX_GPU_DEVICE\() S
+(int) k
+( i, ) p
+(int) k
+( j, ) p
+(int) k
+( k\) noexcept {) p n
+(    amrex::Real s;) N
+(    ) S
+(auto) K
+( eos = pele::physics::PhysicsType::eos\(\);) p n
+(    eos.S\(s\);) N
+(    sfab\(i, j, k\) = s;) N
+(  }\);) N
+(}) N
+() N
+(void) k n
+(pc_dermachnumber\() p n
+(  ) S
+(const) K
+( amrex::Box& bx,) p n
+(  amrex::FArrayBox& derfab,) N
+(  ) S
+(int) k
+( ) p
+(/*dcomp*/) c
+(,) p n
+(  ) S
+(int) k
+( ) p
+(/*ncomp*/) c
+(,) p n
+(  ) S
+(const) K
+( amrex::FArrayBox& datfab,) p n
+(  ) S
+(const) K
+( amrex::Geometry& ) p
+(/*geomdata*/) c
+(,) p n
+(  amrex::Real ) S
+(/*time*/) c
+(,) p n
+(  ) S
+(const) K
+( ) p
+(int) k
+(* ) p
+(/*bcrec*/) c
+(,) p n
+(  ) S
+(const) K
+( ) p
+(int) k
+( ) p
+(/*level*/) c
+(\)) p n
+({) N
+(  ) S
+(auto) K
+( ) p
+(const) K
+( dat = datfab.const_array\(\);) p n
+(  ) S
+(auto) K
+( mach = derfab.array\(\);) p n
+(Derive.cpp) (Page 8/23) (Mar 06, 23 14:55) title
+border
+grestore
+(Printed by Jay Standridge) rhead
+(Derive.cpp) (4/12) (Monday March 06, 2023) footer
+end % of iso1dict
+pagesave restore
+showpage
+%%Page: (9-10) 5
+%%BeginPageSetup
+/pagesave save def
+sh 0 translate 90 rotate
+%%EndPageSetup
+iso1dict begin
+gsave
+llx lly 12 add translate
+/v 0 store
+/x0 x v get 3.147420 add sx cw mul add store
+/y0 y v get bfs th add sub store
+x0 y0 moveto
+() p n
+(  amrex::ParallelFor\(bx, [=] AMREX_GPU_DEVICE\() S
+(int) k
+( i, ) p
+(int) k
+( j, ) p
+(int) k
+( k\) noexcept {) p n
+(    ) S
+(const) K
+( amrex::Real rho = dat\(i, j, k, URHO\);) p n
+(    ) S
+(const) K
+( amrex::Real rhoInv = 1.0 / rho;) p n
+(    ) S
+(const) K
+( amrex::Real T = dat\(i, j, k, UTEMP\);) p n
+(    amrex::Real massfrac[NUM_SPECIES];) N
+(    amrex::Real c;) N
+(    ) S
+(for) K
+( \() p
+(int) k
+( n = 0; n < NUM_SPECIES; ++n\) {) p n
+(      massfrac[n] = dat\(i, j, k, UFS + n\) * rhoInv;) N
+(    }) N
+(    ) S
+(auto) K
+( eos = pele::physics::PhysicsType::eos\(\);) p n
+(    eos.RTY2Cs\(rho, T, massfrac, c\);) N
+(    ) S
+(const) K
+( amrex::Real datxsq = dat\(i, j, k, UMX\) * dat\(i, j, k, UMX\);) p n
+(    ) S
+(const) K
+( amrex::Real datysq = dat\(i, j, k, UMY\) * dat\(i, j, k, UMY\);) p n
+(    ) S
+(const) K
+( amrex::Real datzsq = dat\(i, j, k, UMZ\) * dat\(i, j, k, UMZ\);) p n
+(    mach\(i, j, k\) = sqrt\(datxsq + datysq + datzsq\) / dat\(i, j, k, URHO\) / c;) N
+(  }\);) N
+(}) N
+() N
+(void) k n
+(pc_derpres\() p n
+(  ) S
+(const) K
+( amrex::Box& bx,) p n
+(  amrex::FArrayBox& derfab,) N
+(  ) S
+(int) k
+( ) p
+(/*dcomp*/) c
+(,) p n
+(  ) S
+(int) k
+( ) p
+(/*ncomp*/) c
+(,) p n
+(  ) S
+(const) K
+( amrex::FArrayBox& datfab,) p n
+(  ) S
+(const) K
+( amrex::Geometry& ) p
+(/*geomdata*/) c
+(,) p n
+(  amrex::Real ) S
+(/*time*/) c
+(,) p n
+(  ) S
+(const) K
+( ) p
+(int) k
+(* ) p
+(/*bcrec*/) c
+(,) p n
+(  ) S
+(const) K
+( ) p
+(int) k
+( ) p
+(/*level*/) c
+(\)) p n
+({) N
+(  ) S
+(auto) K
+( ) p
+(const) K
+( dat = datfab.const_array\(\);) p n
+(  ) S
+(auto) K
+( pfab = derfab.array\(\);) p n
+() N
+(  amrex::ParallelFor\(bx, [=] AMREX_GPU_DEVICE\() S
+(int) k
+( i, ) p
+(int) k
+( j, ) p
+(int) k
+( k\) noexcept {) p n
+(    ) S
+(const) K
+( amrex::Real rho = dat\(i, j, k, URHO\);) p n
+(    ) S
+(const) K
+( amrex::Real rhoInv = 1.0 / rho;) p n
+(    amrex::Real T = dat\(i, j, k, UTEMP\);) N
+(    ) S
+(// amrex::Real e = dat\(i, j, k, UEINT\) * rhoInv;) c n
+(    amrex::Real p;) p n
+(    amrex::Real massfrac[NUM_SPECIES];) N
+(    ) S
+(for) K
+( \() p
+(int) k
+( n = 0; n < NUM_SPECIES; ++n\) {) p n
+(      massfrac[n] = dat\(i, j, k, UFS + n\) * rhoInv;) N
+(    }) N
+(    ) S
+(auto) K
+( eos = pele::physics::PhysicsType::eos\(\);) p n
+(    eos.RTY2P\(rho, T, massfrac, p\);) N
+(    pfab\(i, j, k\) = p;) N
+(  }\);) N
+(}) N
+() N
+(void) k n
+(pc_dertemp\() p n
+(  ) S
+(const) K
+( amrex::Box& bx,) p n
+(  amrex::FArrayBox& derfab,) N
+(  ) S
+(int) k
+( ) p
+(/*dcomp*/) c
+(,) p n
+(  ) S
+(int) k
+( ) p
+(/*ncomp*/) c
+(,) p n
+(  ) S
+(const) K
+( amrex::FArrayBox& datfab,) p n
+(  ) S
+(const) K
+( amrex::Geometry& ) p
+(/*geomdata*/) c
+(,) p n
+(  amrex::Real ) S
+(/*time*/) c
+(,) p n
+(  ) S
+(const) K
+( ) p
+(int) k
+(* ) p
+(/*bcrec*/) c
+(,) p n
+(  ) S
+(const) K
+( ) p
+(int) k
+( ) p
+(/*level*/) c
+(\)) p n
+({) N
+(  ) S
+(auto) K
+( ) p
+(const) K
+( dat = datfab.const_array\(\);) p n
+(  ) S
+(auto) K
+( tfab = derfab.array\(\);) p n
+() N
+(  amrex::ParallelFor\(bx, [=] AMREX_GPU_DEVICE\() S
+(int) k
+( i, ) p
+(int) k
+( j, ) p
+(int) k
+( k\) noexcept {) p n
+(    tfab\(i, j, k\) = dat\(i, j, k, UTEMP\);) N
+(  }\);) N
+(}) N
+(Derive.cpp) (Page 9/23) (Mar 06, 23 14:55) title
+border
+/v 1 store
+/x0 x v get 3.147420 add sx cw mul add store
+/y0 y v get bfs th add sub store
+x0 y0 moveto
+() p n
+(void) k n
+(pc_derspectrac\() p n
+(  ) S
+(const) K
+( amrex::Box& bx,) p n
+(  amrex::FArrayBox& derfab,) N
+(  ) S
+(int) k
+( ) p
+(/*dcomp*/) c
+(,) p n
+(  ) S
+(int) k
+( ) p
+(/*ncomp*/) c
+(,) p n
+(  ) S
+(const) K
+( amrex::FArrayBox& datfab,) p n
+(  ) S
+(const) K
+( amrex::Geometry& ) p
+(/*geomdata*/) c
+(,) p n
+(  amrex::Real ) S
+(/*time*/) c
+(,) p n
+(  ) S
+(const) K
+( ) p
+(int) k
+(* ) p
+(/*bcrec*/) c
+(,) p n
+(  ) S
+(const) K
+( ) p
+(int) k
+( ) p
+(/*level*/) c
+(,) p n
+(  ) S
+(const) K
+( ) p
+(int) k
+( idx\)) p n
+({) N
+(  ) S
+(auto) K
+( ) p
+(const) K
+( dat = datfab.const_array\(\);) p n
+(  ) S
+(auto) K
+( spectrac = derfab.array\(\);) p n
+() N
+(  amrex::ParallelFor\(bx, [=] AMREX_GPU_DEVICE\() S
+(int) k
+( i, ) p
+(int) k
+( j, ) p
+(int) k
+( k\) noexcept {) p n
+(    spectrac\(i, j, k\) = dat\(i, j, k, UFS + idx\) / dat\(i, j, k, URHO\);) N
+(  }\);) N
+(}) N
+() N
+(void) k n
+(pc_derradialvel\() p n
+(  ) S
+(const) K
+( amrex::Box& bx,) p n
+(  amrex::FArrayBox& derfab,) N
+(  ) S
+(int) k
+( ) p
+(/*dcomp*/) c
+(,) p n
+(  ) S
+(int) k
+( ) p
+(/*ncomp*/) c
+(,) p n
+(  ) S
+(const) K
+( amrex::FArrayBox& datfab,) p n
+(  ) S
+(const) K
+( amrex::Geometry& geomdata,) p n
+(  amrex::Real ) S
+(/*time*/) c
+(,) p n
+(  ) S
+(const) K
+( ) p
+(int) k
+(* ) p
+(/*bcrec*/) c
+(,) p n
+(  ) S
+(int) k
+( ) p
+(/*level*/) c
+(\)) p n
+({) N
+(  ) S
+(auto) K
+( ) p
+(const) K
+( dat = datfab.const_array\(\);) p n
+(  ) S
+(auto) K
+( rvel = derfab.array\(\);) p n
+() N
+(  ) S
+(const) K
+( amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> prob_lo =) p n
+(    geomdata.ProbLoArray\(\);) N
+(  ) S
+(const) K
+( amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> prob_hi =) p n
+(    geomdata.ProbHiArray\(\);) N
+(  ) S
+(const) K
+( amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> dx =) p n
+(    geomdata.CellSizeArray\(\);) N
+(  AMREX_D_TERM\() S
+(const) K
+( amrex::Real centerx = 0.5 * \(prob_lo[0] + prob_hi[0]\);) p n
+(               , ) S
+(const) K
+( amrex::Real centery = 0.5 * \(prob_lo[1] + prob_hi[1]\);) p n
+(               , ) S
+(const) K
+( amrex::Real centerz = 0.5 * \(prob_lo[2] + prob_hi[2]\)\);) p n
+() N
+(  amrex::ParallelFor\(bx, [=] AMREX_GPU_DEVICE\() S
+(int) k
+( i, ) p
+(int) k
+( j, ) p
+(int) k
+( k\) noexcept {) p n
+(    AMREX_D_TERM\() N
+(      ) S
+(const) K
+( amrex::Real x = prob_lo[0] + \(i + 0.5\) * dx[0] - centerx;) p n
+(      , ) S
+(const) K
+( amrex::Real y = prob_lo[1] + \(j + 0.5\) * dx[1] - centery;) p n
+(      , ) S
+(const) K
+( amrex::Real z = prob_lo[2] + \(k + 0.5\) * dx[2] - centerz;\)) p n
+(    ) S
+(const) K
+( amrex::Real r = sqrt\(AMREX_D_TERM\(x * x, +y * y, +z * z\)\);) p n
+(    rvel\(i, j, k\) = \(AMREX_D_TERM\() N
+(                      dat\(i, j, k, UMX\) * x, +dat\(i, j, k, UMY\) * y,) N
+(                      +dat\(i, j, k, UMZ\) * z\)\) /) N
+(                    \(dat\(i, j, k, URHO\) * r\);) N
+(  }\);) N
+(}) N
+() N
+(void) k n
+(pc_dercp\() p n
+(  ) S
+(const) K
+( amrex::Box& bx,) p n
+(  amrex::FArrayBox& derfab,) N
+(  ) S
+(int) k
+( ) p
+(/*dcomp*/) c
+(,) p n
+(  ) S
+(int) k
+( ) p
+(/*ncomp*/) c
+(,) p n
+(  ) S
+(const) K
+( amrex::FArrayBox& datfab,) p n
+(  ) S
+(const) K
+( amrex::Geometry& ) p
+(/*geomdata*/) c
+(,) p n
+(  amrex::Real ) S
+(/*time*/) c
+(,) p n
+(Derive.cpp) (Page 10/23) (Mar 06, 23 14:55) title
+border
+grestore
+(Printed by Jay Standridge) rhead
+(Derive.cpp) (5/12) (Monday March 06, 2023) footer
+end % of iso1dict
+pagesave restore
+showpage
+%%Page: (11-12) 6
+%%BeginPageSetup
+/pagesave save def
+sh 0 translate 90 rotate
+%%EndPageSetup
+iso1dict begin
+gsave
+llx lly 12 add translate
+/v 0 store
+/x0 x v get 3.147420 add sx cw mul add store
+/y0 y v get bfs th add sub store
+x0 y0 moveto
+(  ) p
+(const) K
+( ) p
+(int) k
+(* ) p
+(/*bcrec*/) c
+(,) p n
+(  ) S
+(int) k
+( ) p
+(/*level*/) c
+(\)) p n
+({) N
+(  ) S
+(auto) K
+( ) p
+(const) K
+( dat = datfab.const_array\(\);) p n
+(  ) S
+(auto) K
+( cp_arr = derfab.array\(\);) p n
+() N
+(  amrex::ParallelFor\(bx, [=] AMREX_GPU_DEVICE\() S
+(int) k
+( i, ) p
+(int) k
+( j, ) p
+(int) k
+( k\) noexcept {) p n
+(    amrex::Real mass[NUM_SPECIES];) N
+(    ) S
+(const) K
+( amrex::Real rhoInv = 1.0 / dat\(i, j, k, URHO\);) p n
+() N
+(    ) S
+(for) K
+( \() p
+(int) k
+( n = 0; n < NUM_SPECIES; n++\) {) p n
+(      mass[n] = dat\(i, j, k, UFS + n\) * rhoInv;) N
+(    }) N
+(    ) S
+(auto) K
+( eos = pele::physics::PhysicsType::eos\(\);) p n
+(    amrex::Real cp = 0.0;) N
+(    eos.RTY2Cp\(dat\(i, j, k, URHO\), dat\(i, j, k, UTEMP\), mass, cp\);) N
+(    cp_arr\(i, j, k\) = cp;) N
+(  }\);) N
+(}) N
+() N
+(void) k n
+(pc_dercv\() p n
+(  ) S
+(const) K
+( amrex::Box& bx,) p n
+(  amrex::FArrayBox& derfab,) N
+(  ) S
+(int) k
+( ) p
+(/*dcomp*/) c
+(,) p n
+(  ) S
+(int) k
+( ) p
+(/*ncomp*/) c
+(,) p n
+(  ) S
+(const) K
+( amrex::FArrayBox& datfab,) p n
+(  ) S
+(const) K
+( amrex::Geometry& ) p
+(/*geomdata*/) c
+(,) p n
+(  amrex::Real ) S
+(/*time*/) c
+(,) p n
+(  ) S
+(const) K
+( ) p
+(int) k
+(* ) p
+(/*bcrec*/) c
+(,) p n
+(  ) S
+(int) k
+( ) p
+(/*level*/) c
+(\)) p n
+({) N
+(  ) S
+(auto) K
+( ) p
+(const) K
+( dat = datfab.const_array\(\);) p n
+(  ) S
+(auto) K
+( cv_arr = derfab.array\(\);) p n
+() N
+(  amrex::ParallelFor\(bx, [=] AMREX_GPU_DEVICE\() S
+(int) k
+( i, ) p
+(int) k
+( j, ) p
+(int) k
+( k\) noexcept {) p n
+(    amrex::Real mass[NUM_SPECIES];) N
+(    ) S
+(const) K
+( amrex::Real rhoInv = 1.0 / dat\(i, j, k, URHO\);) p n
+() N
+(    ) S
+(for) K
+( \() p
+(int) k
+( n = 0; n < NUM_SPECIES; n++\) {) p n
+(      mass[n] = dat\(i, j, k, UFS + n\) * rhoInv;) N
+(    }) N
+(    ) S
+(auto) K
+( eos = pele::physics::PhysicsType::eos\(\);) p n
+(    amrex::Real cv = 0.0;) N
+(    eos.RTY2Cv\(dat\(i, j, k, URHO\), dat\(i, j, k, UTEMP\), mass, cv\);) N
+(    cv_arr\(i, j, k\) = cv;) N
+(  }\);) N
+(}) N
+() N
+(void) k n
+(PeleC::pc_derviscosity\() p n
+(  ) S
+(const) K
+( amrex::Box& bx,) p n
+(  amrex::FArrayBox& derfab,) N
+(  ) S
+(int) k
+( ) p
+(/*dcomp*/) c
+(,) p n
+(  ) S
+(int) k
+( ) p
+(/*ncomp*/) c
+(,) p n
+(  ) S
+(const) K
+( amrex::FArrayBox& datfab,) p n
+(  ) S
+(const) K
+( amrex::Geometry& ) p
+(/*geomdata*/) c
+(,) p n
+(  amrex::Real ) S
+(/*time*/) c
+(,) p n
+(  ) S
+(const) K
+( ) p
+(int) k
+(* ) p
+(/*bcrec*/) c
+(,) p n
+(  ) S
+(int) k
+( ) p
+(/*level*/) c
+(\)) p n
+({) N
+(  ) S
+(auto) K
+( ) p
+(const) K
+( dat = datfab.const_array\(\);) p n
+(  ) S
+(auto) K
+( mu_arr = derfab.array\(\);) p n
+(  ) S
+(auto) K
+( ) p
+(const) K
+(* ltransparm = trans_parms.device_trans_parm\(\);) p n
+() N
+(  amrex::ParallelFor\(bx, [=] AMREX_GPU_DEVICE\() S
+(int) k
+( i, ) p
+(int) k
+( j, ) p
+(int) k
+( k\) noexcept {) p n
+(    amrex::Real massfrac[NUM_SPECIES];) N
+(    ) S
+(const) K
+( amrex::Real rho = dat\(i, j, k, URHO\);) p n
+(    ) S
+(const) K
+( amrex::Real rhoInv = 1.0 / rho;) p n
+(Derive.cpp) (Page 11/23) (Mar 06, 23 14:55) title
+border
+/v 1 store
+/x0 x v get 3.147420 add sx cw mul add store
+/y0 y v get bfs th add sub store
+x0 y0 moveto
+(    ) p
+(const) K
+( amrex::Real T = dat\(i, j, k, UTEMP\);) p n
+() N
+(    ) S
+(for) K
+( \() p
+(int) k
+( n = 0; n < NUM_SPECIES; n++\) {) p n
+(      massfrac[n] = dat\(i, j, k, UFS + n\) * rhoInv;) N
+(    }) N
+(    ) S
+(auto) K
+( trans = pele::physics::PhysicsType::transport\(\);) p n
+(    amrex::Real mu = 0.0, dum1 = 0.0, dum2 = 0.0;) N
+(    ) S
+(const) K
+( ) p
+(bool) k
+( get_xi = ) p
+(false) k
+(, get_mu = ) p
+(true) k
+(, get_lam = ) p
+(false) k
+(,) p n
+(               get_Ddiag = ) S
+(false) k
+(;) p n
+(    trans.transport\() N
+(      get_xi, get_mu, get_lam, get_Ddiag, T, rho, massfrac, nullptr, mu, dum1,) N
+(      dum2, ltransparm\);) N
+(    mu_arr\(i, j, k\) = mu;) N
+(  }\);) N
+(}) N
+() N
+(void) k n
+(PeleC::pc_derbulkviscosity\() p n
+(  ) S
+(const) K
+( amrex::Box& bx,) p n
+(  amrex::FArrayBox& derfab,) N
+(  ) S
+(int) k
+( ) p
+(/*dcomp*/) c
+(,) p n
+(  ) S
+(int) k
+( ) p
+(/*ncomp*/) c
+(,) p n
+(  ) S
+(const) K
+( amrex::FArrayBox& datfab,) p n
+(  ) S
+(const) K
+( amrex::Geometry& ) p
+(/*geomdata*/) c
+(,) p n
+(  amrex::Real ) S
+(/*time*/) c
+(,) p n
+(  ) S
+(const) K
+( ) p
+(int) k
+(* ) p
+(/*bcrec*/) c
+(,) p n
+(  ) S
+(int) k
+( ) p
+(/*level*/) c
+(\)) p n
+({) N
+(  ) S
+(auto) K
+( ) p
+(const) K
+( dat = datfab.const_array\(\);) p n
+(  ) S
+(auto) K
+( xi_arr = derfab.array\(\);) p n
+(  ) S
+(auto) K
+( ) p
+(const) K
+(* ltransparm = trans_parms.device_trans_parm\(\);) p n
+() N
+(  amrex::ParallelFor\(bx, [=] AMREX_GPU_DEVICE\() S
+(int) k
+( i, ) p
+(int) k
+( j, ) p
+(int) k
+( k\) noexcept {) p n
+(    amrex::Real massfrac[NUM_SPECIES];) N
+(    ) S
+(const) K
+( amrex::Real rho = dat\(i, j, k, URHO\);) p n
+(    ) S
+(const) K
+( amrex::Real rhoInv = 1.0 / rho;) p n
+(    ) S
+(const) K
+( amrex::Real T = dat\(i, j, k, UTEMP\);) p n
+() N
+(    ) S
+(for) K
+( \() p
+(int) k
+( n = 0; n < NUM_SPECIES; n++\) {) p n
+(      massfrac[n] = dat\(i, j, k, UFS + n\) * rhoInv;) N
+(    }) N
+(    ) S
+(auto) K
+( trans = pele::physics::PhysicsType::transport\(\);) p n
+(    amrex::Real xi = 0.0, dum1 = 0.0, dum2 = 0.0;) N
+(    ) S
+(const) K
+( ) p
+(bool) k
+( get_xi = ) p
+(true) k
+(, get_mu = ) p
+(false) k
+(, get_lam = ) p
+(false) k
+(,) p n
+(               get_Ddiag = ) S
+(false) k
+(;) p n
+(    trans.transport\() N
+(      get_xi, get_mu, get_lam, get_Ddiag, T, rho, massfrac, nullptr, dum1, xi,) N
+(      dum2, ltransparm\);) N
+(    xi_arr\(i, j, k\) = xi;) N
+(  }\);) N
+(}) N
+() N
+(void) k n
+(PeleC::pc_derconductivity\() p n
+(  ) S
+(const) K
+( amrex::Box& bx,) p n
+(  amrex::FArrayBox& derfab,) N
+(  ) S
+(int) k
+( ) p
+(/*dcomp*/) c
+(,) p n
+(  ) S
+(int) k
+( ) p
+(/*ncomp*/) c
+(,) p n
+(  ) S
+(const) K
+( amrex::FArrayBox& datfab,) p n
+(  ) S
+(const) K
+( amrex::Geometry& ) p
+(/*geomdata*/) c
+(,) p n
+(  amrex::Real ) S
+(/*time*/) c
+(,) p n
+(  ) S
+(const) K
+( ) p
+(int) k
+(* ) p
+(/*bcrec*/) c
+(,) p n
+(  ) S
+(int) k
+( ) p
+(/*level*/) c
+(\)) p n
+({) N
+(  ) S
+(auto) K
+( ) p
+(const) K
+( dat = datfab.const_array\(\);) p n
+(  ) S
+(auto) K
+( lam_arr = derfab.array\(\);) p n
+(  ) S
+(auto) K
+( ) p
+(const) K
+(* ltransparm = trans_parms.device_trans_parm\(\);) p n
+() N
+(  amrex::ParallelFor\(bx, [=] AMREX_GPU_DEVICE\() S
+(int) k
+( i, ) p
+(int) k
+( j, ) p
+(int) k
+( k\) noexcept {) p n
+(Derive.cpp) (Page 12/23) (Mar 06, 23 14:55) title
+border
+grestore
+(Printed by Jay Standridge) rhead
+(Derive.cpp) (6/12) (Monday March 06, 2023) footer
+end % of iso1dict
+pagesave restore
+showpage
+%%Page: (13-14) 7
+%%BeginPageSetup
+/pagesave save def
+sh 0 translate 90 rotate
+%%EndPageSetup
+iso1dict begin
+gsave
+llx lly 12 add translate
+/v 0 store
+/x0 x v get 3.147420 add sx cw mul add store
+/y0 y v get bfs th add sub store
+x0 y0 moveto
+(    amrex::Real massfrac[NUM_SPECIES];) p n
+(    ) S
+(const) K
+( amrex::Real rho = dat\(i, j, k, URHO\);) p n
+(    ) S
+(const) K
+( amrex::Real rhoInv = 1.0 / rho;) p n
+(    ) S
+(const) K
+( amrex::Real T = dat\(i, j, k, UTEMP\);) p n
+() N
+(    ) S
+(for) K
+( \() p
+(int) k
+( n = 0; n < NUM_SPECIES; n++\) {) p n
+(      massfrac[n] = dat\(i, j, k, UFS + n\) * rhoInv;) N
+(    }) N
+(    ) S
+(auto) K
+( trans = pele::physics::PhysicsType::transport\(\);) p n
+(    amrex::Real lam = 0.0, dum1 = 0.0, dum2 = 0.0;) N
+(    ) S
+(const) K
+( ) p
+(bool) k
+( get_xi = ) p
+(false) k
+(, get_mu = ) p
+(false) k
+(, get_lam = ) p
+(true) k
+(,) p n
+(               get_Ddiag = ) S
+(false) k
+(;) p n
+(    trans.transport\() N
+(      get_xi, get_mu, get_lam, get_Ddiag, T, rho, massfrac, nullptr, dum1, dum2,) N
+(      lam, ltransparm\);) N
+(    lam_arr\(i, j, k\) = lam;) N
+(  }\);) N
+(}) N
+() N
+(void) k n
+(PeleC::pc_derdiffusivity\() p n
+(  ) S
+(const) K
+( amrex::Box& bx,) p n
+(  amrex::FArrayBox& derfab,) N
+(  ) S
+(int) k
+( ) p
+(/*dcomp*/) c
+(,) p n
+(  ) S
+(int) k
+( ) p
+(/*ncomp*/) c
+(,) p n
+(  ) S
+(const) K
+( amrex::FArrayBox& datfab,) p n
+(  ) S
+(const) K
+( amrex::Geometry& ) p
+(/*geomdata*/) c
+(,) p n
+(  amrex::Real ) S
+(/*time*/) c
+(,) p n
+(  ) S
+(const) K
+( ) p
+(int) k
+(* ) p
+(/*bcrec*/) c
+(,) p n
+(  ) S
+(int) k
+( ) p
+(/*level*/) c
+(\)) p n
+({) N
+(  ) S
+(auto) K
+( ) p
+(const) K
+( dat = datfab.const_array\(\);) p n
+(  ) S
+(auto) K
+( d_arr = derfab.array\(\);) p n
+(  ) S
+(auto) K
+( ) p
+(const) K
+(* ltransparm = trans_parms.device_trans_parm\(\);) p n
+() N
+(  amrex::ParallelFor\(bx, [=] AMREX_GPU_DEVICE\() S
+(int) k
+( i, ) p
+(int) k
+( j, ) p
+(int) k
+( k\) noexcept {) p n
+(    amrex::Real massfrac[NUM_SPECIES];) N
+(    amrex::Real ddiag[NUM_SPECIES] = {0.0};) N
+(    ) S
+(const) K
+( amrex::Real rho = dat\(i, j, k, URHO\);) p n
+(    ) S
+(const) K
+( amrex::Real rhoInv = 1.0 / rho;) p n
+(    ) S
+(const) K
+( amrex::Real T = dat\(i, j, k, UTEMP\);) p n
+() N
+(    ) S
+(for) K
+( \() p
+(int) k
+( n = 0; n < NUM_SPECIES; n++\) {) p n
+(      massfrac[n] = dat\(i, j, k, UFS + n\) * rhoInv;) N
+(    }) N
+(    ) S
+(auto) K
+( trans = pele::physics::PhysicsType::transport\(\);) p n
+(    amrex::Real dum1 = 0.0, dum2 = 0.0, dum3 = 0.0;) N
+(    ) S
+(const) K
+( ) p
+(bool) k
+( get_xi = ) p
+(false) k
+(, get_mu = ) p
+(false) k
+(, get_lam = ) p
+(false) k
+(,) p n
+(               get_Ddiag = ) S
+(true) k
+(;) p n
+(    trans.transport\() N
+(      get_xi, get_mu, get_lam, get_Ddiag, T, rho, massfrac, ddiag, dum1, dum2,) N
+(      dum3, ltransparm\);) N
+(    ) S
+(for) K
+( \() p
+(int) k
+( n = 0; n < NUM_SPECIES; n++\) {) p n
+(      d_arr\(i, j, k, n\) = ddiag[n];) N
+(    }) N
+(  }\);) N
+(}) N
+() N
+(void) k n
+(pc_vel_ders\() p n
+(  ) S
+(const) K
+( amrex::Box& bx,) p n
+(  amrex::FArrayBox& derfab,) N
+(  ) S
+(int) k
+( ) p
+(/*dcomp*/) c
+(,) p n
+(  ) S
+(int) k
+( ) p
+(/*ncomp*/) c
+(,) p n
+(  ) S
+(const) K
+( amrex::FArrayBox& datfab,) p n
+(  ) S
+(const) K
+( amrex::Geometry& geomdata,) p n
+(  amrex::Real ) S
+(/*time*/) c
+(,) p n
+(  ) S
+(const) K
+( ) p
+(int) k
+(* ) p
+(/*bcrec*/) c
+(,) p n
+(  ) S
+(const) K
+( ) p
+(int) k
+( ) p
+(/*level*/) c
+(\)) p n
+(Derive.cpp) (Page 13/23) (Mar 06, 23 14:55) title
+border
+/v 1 store
+/x0 x v get 3.147420 add sx cw mul add store
+/y0 y v get bfs th add sub store
+x0 y0 moveto
+({) p n
+(  ) S
+(auto) K
+( ) p
+(const) K
+( dat = datfab.const_array\(\);) p n
+(  ) S
+(auto) K
+( vel_ders = derfab.array\(\);) p n
+() N
+(  ) S
+(const) K
+( amrex::Box& gbx = amrex::grow\(bx, 1\);) p n
+() N
+(  amrex::FArrayBox local\(gbx, 3, amrex::The_Async_Arena\(\)\);) N
+(  ) S
+(auto) K
+( larr = local.array\(\);) p n
+() N
+(  ) S
+(const) K
+( ) p
+(auto) K
+(& flag_fab = amrex::getEBCellFlagFab\(datfab\);) p n
+(  ) S
+(const) K
+( ) p
+(auto) K
+(& typ = flag_fab.getType\(bx\);) p n
+(  ) S
+(if) K
+( \(typ == amrex::FabType::covered\) {) p n
+(    derfab.setVal<amrex::RunOn::Device>\(0.0, bx\);) N
+(    ) S
+(return) K
+(;) p n
+(  }) N
+(  ) S
+(const) K
+( ) p
+(auto) K
+(& flags = flag_fab.const_array\(\);) p n
+(  ) S
+(const) K
+( ) p
+(bool) k
+( all_regular = typ == amrex::FabType::regular;) p n
+() N
+(  ) S
+(// Convert momentum to velocity.) c n
+(  amrex::ParallelFor\(gbx, [=] AMREX_GPU_DEVICE\() p
+(int) k
+( i, ) p
+(int) k
+( j, ) p
+(int) k
+( k\) noexcept {) p n
+(    ) S
+(const) K
+( amrex::Real rhoInv = 1.0 / dat\(i, j, k, URHO\);) p n
+(    larr\(i, j, k, 0\) = dat\(i, j, k, UMX\) * rhoInv;) N
+(    larr\(i, j, k, 1\) = dat\(i, j, k, UMY\) * rhoInv;) N
+(    larr\(i, j, k, 2\) = dat\(i, j, k, UMZ\) * rhoInv;) N
+(  }\);) N
+() N
+(  AMREX_D_TERM\() S
+(const) K
+( amrex::Real dx = geomdata.CellSize\(0\);) p n
+(               , ) S
+(const) K
+( amrex::Real dy = geomdata.CellSize\(1\);) p n
+(               , ) S
+(const) K
+( amrex::Real dz = geomdata.CellSize\(2\);\);) p n
+() N
+(  amrex::ParallelFor\(bx, [=] AMREX_GPU_DEVICE\() S
+(int) k
+( i, ) p
+(int) k
+( j, ) p
+(int) k
+( k\) noexcept {) p n
+() S 8 T () S 16 T () S 24 T (   AMREX_D_TERM\() S
+(int) k
+( im; ) p
+(int) k
+( ip;, ) p
+(int) k
+( jm; ) p
+(int) k
+( jp;, ) p
+(int) k
+( km) p n
+(; ) S
+(int) k
+( kp;\);) p n
+() S 8 T () S 16 T () S 24 T (   AMREX_D_TERM\(get_idx\(i, 0, all_regular, flags\(i, j, k) N
+(\), im, ip\);) N
+() S 8 T () S 16 T () S 24 T () S 32 T () S 40 T (, get_idx\(j, 1, all_regular, flags\(i, j,) N
+( k\), jm, jp\);) N
+() S 8 T () S 16 T () S 24 T () S 32 T () S 40 T (, get_idx\(k, 2, all_regular, flags\(i, j,) N
+( k\), km, kp\);\);) N
+() S 8 T () S 16 T () S 24 T (   AMREX_D_TERM\() S
+(const) K
+( amrex::Real wi = get_weight\(im, ip) p n
+(\);) N
+() S 8 T () S 16 T () S 24 T () S 32 T () S 40 T (, ) S
+(const) K
+( amrex::Real wj = get_weight\(jm, ) p n
+(jp\);) N
+() S 8 T () S 16 T () S 24 T () S 32 T () S 40 T (, ) S
+(const) K
+( amrex::Real wk = get_weight\(km, ) p n
+(kp\);\);) N
+() S 8 T () S 16 T () S 24 T (   ) N
+() N
+() S 8 T () S 16 T () S 24 T (   vel_ders\(i, j, k, 0\) = wi * \(larr\(ip, j, k, 0\) - larr) N
+(\(im, j, k, 0\)\) / dx; ) S
+(// dudx) c n
+() p 8 T () S 16 T () S 24 T (   vel_ders\(i, j, k, 1\) = wj * \(larr\(i, jp, k, 0\) - larr) N
+(\(i, jm, k, 0\)\) / dy; ) S
+(// dudy) c n
+() p 8 T () S 16 T () S 24 T (   vel_ders\(i, j, k, 2\) = wk * \(larr\(i, j, kp, 0\) - larr) N
+(\(i, j, km, 0\)\) / dz; ) S
+(// dudz) c n
+() p n
+() S 8 T () S 16 T () S 24 T (   vel_ders\(i, j, k, 3\) = wi * \(larr\(ip, j, k, 1\) - larr) N
+(\(im, j, k, 1\)\) / dx; ) S
+(// dvdx) c n
+() p 8 T () S 16 T () S 24 T (   vel_ders\(i, j, k, 4\) = wj * \(larr\(i, jp, k, 1\) - larr) N
+(\(i, jm, k, 1\)\) / dy; ) S
+(// dvdy) c n
+() p 8 T () S 16 T () S 24 T (   vel_ders\(i, j, k, 5\) = wk * \(larr\(i, j, kp, 1\) - larr) N
+(\(i, j, km, 1\)\) / dz; ) S
+(// dvdz) c n
+() p n
+() S 8 T () S 16 T () S 24 T (   vel_ders\(i, j, k, 6\) = wi * \(larr\(ip, j, k, 2\) - larr) N
+(\(im, j, k, 2\)\) / dx; ) S
+(// dwdx) c n
+() p 8 T () S 16 T () S 24 T (   vel_ders\(i, j, k, 7\) = wj * \(larr\(i, jp, k, 2\) - larr) N
+(\(i, jm, k, 2\)\) / dy; ) S
+(// dwdy) c n
+() p 8 T () S 16 T () S 24 T (   vel_ders\(i, j, k, 8\) = wk * \(larr\(i, j, kp, 2\) - larr) N
+(\(i, j, km, 2\)\) / dz; ) S
+(// dwdz) c n
+() p 8 T () S 16 T () S 24 T ( }\);) N
+(}) N
+(Derive.cpp) (Page 14/23) (Mar 06, 23 14:55) title
+border
+grestore
+(Printed by Jay Standridge) rhead
+(Derive.cpp) (7/12) (Monday March 06, 2023) footer
+end % of iso1dict
+pagesave restore
+showpage
+%%Page: (15-16) 8
+%%BeginPageSetup
+/pagesave save def
+sh 0 translate 90 rotate
+%%EndPageSetup
+iso1dict begin
+gsave
+llx lly 12 add translate
+/v 0 store
+/x0 x v get 3.147420 add sx cw mul add store
+/y0 y v get bfs th add sub store
+x0 y0 moveto
+() p n
+() N
+() N
+() N
+() N
+() N
+() N
+(void) k n
+(PeleC::pc_entropyInequality\() p n
+(  ) S
+(const) K
+( amrex::Box& bx,) p n
+(  amrex::FArrayBox& derfab,) N
+(  ) S
+(int) k
+( ) p
+(/*dcomp*/) c
+(,) p n
+(  ) S
+(int) k
+( ) p
+(/*ncomp*/) c
+(,) p n
+(  ) S
+(const) K
+( amrex::FArrayBox& datfab,) p n
+(  ) S
+(const) K
+( amrex::Geometry& geomdata,) p n
+(  amrex::Real ) S
+(/*time*/) c
+(,) p n
+(  ) S
+(const) K
+( ) p
+(int) k
+(* ) p
+(/*bcrec*/) c
+(,) p n
+(  ) S
+(const) K
+( ) p
+(int) k
+( ) p
+(/*level*/) c
+(\)) p n
+({) N
+(  ) S
+(auto) K
+( entropyInequality = derfab.array\(\);) p n
+() N
+(  amrex::FArrayBox local\(bx, 9, amrex::The_Async_Arena\(\)\);) N
+(  ) S
+(auto) K
+( vel_ders = local.array\(\);) p n
+(  ) S
+(auto) K
+( ) p
+(const) K
+( dat = datfab.const_array\(\);) p n
+(  ) S
+(auto) K
+( mu_arr = local.array\(\);) p n
+(  ) S
+(auto) K
+( divu   = local.array\(\);) p n
+(  ) S
+(auto) K
+( gradXx       = local.array\(\);) p n
+(  ) S
+(auto) K
+( gradYx       = local.array\(\);) p n
+(  ) S
+(auto) K
+( gradXy       = local.array\(\);) p n
+(  ) S
+(auto) K
+( gradYy       = local.array\(\);) p n
+(  ) S
+(auto) K
+( gradXz       = local.array\(\);) p n
+(  ) S
+(auto) K
+( gradYz       = local.array\(\);) p n
+(  ) S
+(auto) K
+( gradT       = local.array\(\);) p n
+(  ) S
+(auto) K
+( lam_arr = local.array\(\);) p n
+(  ) S
+(auto) K
+( d_arr = local.array\(\);) p n
+(  ) S
+(auto) K
+( ) p
+(const) K
+(* ltransparm = trans_parms.device_trans_parm\(\);) p n
+() N
+(  amrex::ParallelFor\(bx, [=] AMREX_GPU_DEVICE\() S
+(int) k
+( i, ) p
+(int) k
+( j, ) p
+(int) k
+( k\) noexcept {) p n
+(    amrex::Real massfrac[NUM_SPECIES];) N
+(    ) S
+(const) K
+( amrex::Real rho = dat\(i, j, k, URHO\);) p n
+(    ) S
+(const) K
+( amrex::Real rhoInv = 1.0 / rho;) p n
+(    amrex::Real ddiag[NUM_SPECIES] = {0.0};) N
+(    ) S
+(const) K
+( amrex::Real T = dat\(i, j, k, UTEMP\);) p n
+() N
+(    ) S
+(for) K
+( \() p
+(int) k
+( n = 0; n < NUM_SPECIES; n++\) {) p n
+(      massfrac[n] = dat\(i, j, k, UFS + n\) * rhoInv;) N
+(    }) N
+(    ) S
+(auto) K
+( trans = pele::physics::PhysicsType::transport\(\);) p n
+(    amrex::Real mu = 0.0, lam = 0.0, dum1 = 0.0;) N
+(    ) S
+(const) K
+( ) p
+(bool) k
+( get_xi = ) p
+(false) k
+(, get_mu = ) p
+(true) k
+(, get_lam = ) p
+(true) k
+(,) p n
+(               get_Ddiag = ) S
+(true) k
+(;) p n
+(    trans.transport\() N
+(      get_xi, get_mu, get_lam, get_Ddiag, T, rho, massfrac, ddiag, mu, dum1,) N
+(      lam, ltransparm\);) N
+(    mu_arr\(i, j, k, 0\) = mu;) N
+(    lam_arr\(i, j, k, 0\) = lam;) N
+(    ) S
+(for) K
+( \() p
+(int) k
+( n = 0; n < NUM_SPECIES; n++\) {) p n
+(      d_arr\(i, j, k, n\) = ddiag[n];) N
+(    }) N
+(  }\);) N
+() N
+() N
+() N
+(  amrex::ParallelFor\(bx, [=] AMREX_GPU_DEVICE\() S
+(int) k
+( i, ) p
+(int) k
+( j, ) p
+(int) k
+( k\) noexcept {) p n
+(    ) N
+(  }\);) N
+(  ) N
+() N
+(  ) S
+(const) K
+( amrex::Box& gbx = amrex::grow\(bx, 1\);) p n
+(Derive.cpp) (Page 15/23) (Mar 06, 23 14:55) title
+border
+/v 1 store
+/x0 x v get 3.147420 add sx cw mul add store
+/y0 y v get bfs th add sub store
+x0 y0 moveto
+() p n
+(  amrex::FArrayBox glocal\(gbx, NUM_SPECIES, amrex::The_Async_Arena\(\)\);) N
+(  ) S
+(auto) K
+( larr = glocal.array\(\);) p n
+(  ) S
+(auto) K
+( specX= glocal.array\(\);) p n
+(  ) S
+(auto) K
+( specY= glocal.array\(\);) p n
+(  ) S
+(const) K
+( ) p
+(auto) K
+(& flag_fab = amrex::getEBCellFlagFab\(datfab\);) p n
+(  ) S
+(const) K
+( ) p
+(auto) K
+(& typ = flag_fab.getType\(bx\);) p n
+(  ) S
+(if) K
+( \(typ == amrex::FabType::covered\) {) p n
+(    derfab.setVal<amrex::RunOn::Device>\(0.0, bx\);) N
+(    ) S
+(return) K
+(;) p n
+(  }) N
+(  ) S
+(const) K
+( ) p
+(auto) K
+(& flags = flag_fab.const_array\(\);) p n
+(  ) S
+(const) K
+( ) p
+(bool) k
+( all_regular = typ == amrex::FabType::regular;) p n
+(  ) S
+(// Convert momentum to velocity.) c n
+(  amrex::ParallelFor\(gbx, [=] AMREX_GPU_DEVICE\() p
+(int) k
+( i, ) p
+(int) k
+( j, ) p
+(int) k
+( k\) noexcept {) p n
+() S 8 T () S 16 T () S 24 T (    amrex::Real mass[NUM_SPECIES];) N
+() S 8 T () S 16 T () S 24 T (    amrex::Real mole[NUM_SPECIES];) N
+() S 8 T () S 16 T () S 24 T (    amrex::Real rhoInv = 1.0 / dat\(i, j, k, URHO\);) N
+() N
+() S 8 T () S 16 T () S 24 T (    ) S
+(for) K
+( \() p
+(int) k
+( n = 0; n < NUM_SPECIES; n++\) {) p n
+() S 8 T () S 16 T () S 24 T (      mass[n] = dat\(i, j, k, UFS + n\) * rhoInv;) N
+() S 8 T () S 16 T () S 24 T (    }) N
+() S 8 T () S 16 T () S 24 T (    ) S
+(auto) K
+( eos = pele::physics::PhysicsType::eos\(\);) p n
+() S 8 T () S 16 T () S 24 T (    eos.Y2X\(mass, mole\);) N
+() S 8 T () S 16 T () S 24 T (    ) S
+(for) K
+( \() p
+(int) k
+( n = 0; n < NUM_SPECIES; n++\) {) p n
+() S 8 T () S 16 T () S 24 T (      specX\(i, j, k, n\) = mole[n];) N
+() S 8 T () S 16 T () S 24 T (      specY\(i, j, k, n\) = mass[n];) N
+() S 8 T () S 16 T () S 24 T (    }) N
+() S 8 T () S 16 T () S 24 T (    larr\(i, j, k, 0\) = dat\(i, j, k, UMX\) * rhoInv;) N
+() S 8 T () S 16 T () S 24 T (    larr\(i, j, k, 1\) = dat\(i, j, k, UMY\) * rhoInv;) N
+() S 8 T () S 16 T () S 24 T (    larr\(i, j, k, 2\) = dat\(i, j, k, UMZ\) * rhoInv;) N
+() S 8 T () S 16 T () S 24 T (    larr\(i, j, k, 3\) = dat\(i, j, k, UTEMP\);) N
+() S 8 T () S 16 T () S 24 T (    ) N
+() S 8 T () S 16 T () S 24 T (  }\);) N
+(  ) N
+(  AMREX_D_TERM\() S
+(const) K
+( amrex::Real dx = geomdata.CellSize\(0\);) p n
+(               , ) S
+(const) K
+( amrex::Real dy = geomdata.CellSize\(1\);) p n
+(               , ) S
+(const) K
+( amrex::Real dz = geomdata.CellSize\(2\);\);) p n
+(  ) N
+(    amrex::ParallelFor\(bx, [=] AMREX_GPU_DEVICE\() S
+(int) k
+( i, ) p
+(int) k
+( j, ) p
+(int) k
+( k\) noexcept {) p n
+(  ) S 8 T () S 16 T () S 24 T (   AMREX_D_TERM\() S
+(int) k
+( im; ) p
+(int) k
+( ip;, ) p
+(int) k
+( jm; ) p
+(int) k
+( jp;, ) p
+(int) k
+( km) p n
+(; ) S
+(int) k
+( kp;\);) p n
+(  ) S 8 T () S 16 T () S 24 T (   AMREX_D_TERM\(get_idx\(i, 0, all_regular, flags\(i, j, k) N
+(\), im, ip\);) N
+(  ) S 8 T () S 16 T () S 24 T (   ) S 32 T () S 40 T (, get_idx\(j, 1, all_regular, flags\(i, j,) N
+( k\), jm, jp\);) N
+(  ) S 8 T () S 16 T () S 24 T (   ) S 32 T () S 40 T (, get_idx\(k, 2, all_regular, flags\(i, j,) N
+( k\), km, kp\);\);) N
+(  ) S 8 T () S 16 T () S 24 T (   AMREX_D_TERM\() S
+(const) K
+( amrex::Real wi = get_weight\(im, ip) p n
+(\);) N
+(  ) S 8 T () S 16 T () S 24 T (   ) S 32 T () S 40 T (, ) S
+(const) K
+( amrex::Real wj = get_weight\(jm, ) p n
+(jp\);) N
+(  ) S 8 T () S 16 T () S 24 T (   ) S 32 T () S 40 T (, ) S
+(const) K
+( amrex::Real wk = get_weight\(km, ) p n
+(kp\);\);) N
+() S 8 T () S 16 T () S 24 T (   ) S
+(const) K
+( amrex::Real rhoInv = 1.0 / dat\(i, j, k, URHO\);) p n
+() N
+(  ) S 8 T () S 16 T () S 24 T (   vel_ders\(i, j, k, 0\) = wi * \(larr\(ip, j, k, 0\) - larr) N
+(\(im, j, k, 0\)\) / dx; ) S
+(// dudx) c n
+(  ) p 8 T () S 16 T () S 24 T (   vel_ders\(i, j, k, 1\) = wj * \(larr\(i, jp, k, 0\) - larr) N
+(\(i, jm, k, 0\)\) / dy; ) S
+(// dudy) c n
+(  ) p 8 T () S 16 T () S 24 T (   vel_ders\(i, j, k, 2\) = wk * \(larr\(i, j, kp, 0\) - larr) N
+(\(i, j, km, 0\)\) / dz; ) S
+(// dudz) c n
+() p n
+(  ) S 8 T () S 16 T () S 24 T (   vel_ders\(i, j, k, 3\) = wi * \(larr\(ip, j, k, 1\) - larr) N
+(\(im, j, k, 1\)\) / dx; ) S
+(// dvdx) c n
+(  ) p 8 T () S 16 T () S 24 T (   vel_ders\(i, j, k, 4\) = wj * \(larr\(i, jp, k, 1\) - larr) N
+(\(i, jm, k, 1\)\) / dy; ) S
+(// dvdy) c n
+(  ) p 8 T () S 16 T () S 24 T (   vel_ders\(i, j, k, 5\) = wk * \(larr\(i, j, kp, 1\) - larr) N
+(\(i, j, km, 1\)\) / dz; ) S
+(// dvdz) c n
+(Derive.cpp) (Page 16/23) (Mar 06, 23 14:55) title
+border
+grestore
+(Printed by Jay Standridge) rhead
+(Derive.cpp) (8/12) (Monday March 06, 2023) footer
+end % of iso1dict
+pagesave restore
+showpage
+%%Page: (17-18) 9
+%%BeginPageSetup
+/pagesave save def
+sh 0 translate 90 rotate
+%%EndPageSetup
+iso1dict begin
+gsave
+llx lly 12 add translate
+/v 0 store
+/x0 x v get 3.147420 add sx cw mul add store
+/y0 y v get bfs th add sub store
+x0 y0 moveto
+() p n
+(  ) S 8 T () S 16 T () S 24 T (   vel_ders\(i, j, k, 6\) = wi * \(larr\(ip, j, k, 2\) - larr) N
+(\(im, j, k, 2\)\) / dx; ) S
+(// dwdx) c n
+(  ) p 8 T () S 16 T () S 24 T (   vel_ders\(i, j, k, 7\) = wj * \(larr\(i, jp, k, 2\) - larr) N
+(\(i, jm, k, 2\)\) / dy; ) S
+(// dwdy) c n
+(  ) p 8 T () S 16 T () S 24 T (   vel_ders\(i, j, k, 8\) = wk * \(larr\(i, j, kp, 2\) - larr) N
+(\(i, j, km, 2\)\) / dz; ) S
+(// dwdz) c n
+() p n
+() S 8 T () S 16 T () S 24 T (   gradT\(i, j, k, 0\) = wi * \(larr\(ip, j, k, 3\) - larr\(im) N
+(, j, k, 3\)\) / dx; ) S
+(// dwdx) c n
+(  ) p 8 T () S 16 T () S 24 T (   gradT\(i, j, k, 1\) = wj * \(larr\(i, jp, k, 3\) - larr\(i,) N
+( jm, k, 3\)\) / dy; ) S
+(// dwdy) c n
+(  ) p 8 T () S 16 T () S 24 T (   gradT\(i, j, k, 2\) = wk * \(larr\(i, j, kp, 3\) - larr\(i,) N
+( j, km, 3\)\) / dz; ) S
+(// dwdz) c n
+() p n
+() S 8 T () S 16 T () S 24 T (   ) S
+(// for \(int n = 0; n < NUM_SPECIES; n++\) {) c n
+() p 8 T () S 16 T () S 24 T (   ) S
+(//    gradXx\(i, j, k, n\) = wi * \(specX\(ip, j, k, n\) -) c n
+( specX\(im, j, k, n\)\) / dx; // dwdx) N
+() p 8 T () S 16 T () S 24 T (   ) S
+(//    gradXy\(i, j, k, n\) = wj * \(specX\(i, jp, k, n\) -) c n
+( specX\(i, jm, k, n\)\) / dy; // dwdy) N
+() p 8 T () S 16 T () S 24 T (   ) S
+(//    gradXz\(i, j, k, n\) = wk * \(specX\(i, j, kp, n\) -) c n
+( specX\(i, j, km, n\)\) / dz; // dwdz) N
+() p 8 T () S 16 T () S 24 T (   ) S
+(// }) c n
+() p 8 T () S 16 T () S 24 T (   ) S
+(// for \(int n = 0; n < NUM_SPECIES; n++\) {) c n
+() p 8 T () S 16 T () S 24 T (   ) S
+(//    gradYx\(i, j, k, n\) = wi * \(specY\(ip, j, k, n\) -) c n
+( specY\(im, j, k, n\)\) / dx; // dwdx) N
+() p 8 T () S 16 T () S 24 T (   ) S
+(//    gradYy\(i, j, k, n\) = wj * \(specY\(i, jp, k, n\) -) c n
+( specY\(i, jm, k, n\)\) / dy; // dwdy) N
+() p 8 T () S 16 T () S 24 T (   ) S
+(//    gradYz\(i, j, k, n\) = wk * \(specY\(i, j, kp, n\) -) c n
+( specY\(i, j, km, n\)\) / dz; // dwdz) N
+() p 8 T () S 16 T () S 24 T (   ) S
+(// }) c n
+() p n
+() S 8 T () S 16 T () S 24 T (   ) S
+(for) K
+( \() p
+(int) k
+( n = 0; n < NUM_SPECIES; n++\) {) p n
+() S 8 T () S 16 T () S 24 T (      gradYx\(i, j, k, n\) = wi * \(dat\(ip, j, k, UFS+n\) - ) N
+(dat\(im, j, k, UFS+n\)\) / dx; ) S
+(// dwdx) c n
+() p 8 T () S 16 T () S 24 T (      gradYy\(i, j, k, n\) = wj * \(dat\(i, jp, k, UFS+n\) - ) N
+(dat\(i, jm, k, UFS+n\)\) / dy; ) S
+(// dwdy) c n
+() p 8 T () S 16 T () S 24 T (      gradYz\(i, j, k, n\) = wk * \(dat\(i, j, kp, UFS+n\) - ) N
+(dat\(i, j, km, UFS+n\)\) / dz; ) S
+(// dwdz) c n
+() p 8 T () S 16 T () S 24 T (   }) N
+() S 8 T () S 16 T () S 24 T (    ) S
+(for) K
+( \() p
+(int) k
+( n = 0; n < NUM_SPECIES; n++\) {) p n
+() S 8 T () S 16 T () S 24 T (      gradXx\(i, j, k, n\) = wi * \(specX\(ip, j, k, n\) - sp) N
+(ecX\(im, j, k, n\)\) / dx; ) S
+(// dwdx) c n
+() p 8 T () S 16 T () S 24 T (      gradXy\(i, j, k, n\) = wj * \(specX\(i, jp, k, n\) - sp) N
+(ecX\(i, jm, k, n\)\) / dy; ) S
+(// dwdy) c n
+() p 8 T () S 16 T () S 24 T (      gradXz\(i, j, k, n\) = wk * \(specX\(i, j, kp, n\) - sp) N
+(ecX\(i, j, km, n\)\) / dz; ) S
+(// dwdz) c n
+() p 8 T () S 16 T () S 24 T (   }) N
+() S 8 T () S 16 T () S 24 T (   ) N
+() N
+() S 8 T () S 16 T () S 24 T (   divu\(i,j,k,0\) = vel_ders\(i, j, k, 0\) + vel_ders\(i, j,) N
+( k, 4\) + vel_ders\(i, j, k, 8\);) N
+() S 8 T () S 16 T () S 24 T (   entropyInequality\(i,j,k,0\)=\(2/3*pow\(divu\(i,j,k,0\),2\)-) N
+(2*\( pow\(vel_ders\(i, j, k, 0\),2\) + pow\(vel_ders\(i, j, k, 4\),2\) +pow\( vel_ders\(i, ) N
+(j, k, 8\),2\)\)-\(pow\(vel_ders\(i, j, k, 2\) + vel_ders\(i, j, k, 3\),2\) + pow\(vel_ders\() N
+(i, j, k, 2\) + vel_ders\(i, j, k, 6\),2\) + pow\(vel_ders\(i, j, k, 7\) + vel_ders\(i, j) N
+(, k, 5\),2\)\)\);) N
+() S 8 T () S 16 T () S 24 T (   entropyInequality\(i,j,k,0\)=specX\(i,j,k,2\);) N
+() S 8 T () S 16 T () S 24 T (   ) N
+() S 8 T () S 16 T () S 24 T (   entropyInequality\(i,j,k,1\)=gradT\(i,j,k,0\);) N
+() S 8 T () S 16 T () S 24 T (   entropyInequality\(i,j,k,2\)=gradT\(i,j,k,1\);) N
+() S 8 T () S 16 T () S 24 T (   entropyInequality\(i,j,k,3\)=gradT\(i,j,k,2\);) N
+() S 8 T () S 16 T () S 24 T (   ) N
+() S 8 T () S 16 T () S 24 T (   entropyInequality\(i,j,k,4\)=gradYx\(i, j, k, 2\);) N
+() S 8 T () S 16 T () S 24 T (   entropyInequality\(i,j,k,5\)=gradYy\(i, j, k, 2\);) N
+() S 8 T () S 16 T () S 24 T (   entropyInequality\(i,j,k,6\)=gradYz\(i, j, k, 2\);) N
+() S 8 T () S 16 T () S 24 T (   ) S
+(for) K
+( \() p
+(int) k
+( n = 0; n < NUM_SPECIES; n++\) {) p n
+() S 8 T () S 16 T () S 24 T (     entropyInequality\(i,j,k,n+9\)=dat\(i, j, k, UFS + n\) ) N
+(* rhoInv;) N
+(Derive.cpp) (Page 17/23) (Mar 06, 23 14:55) title
+border
+/v 1 store
+/x0 x v get 3.147420 add sx cw mul add store
+/y0 y v get bfs th add sub store
+x0 y0 moveto
+() p 8 T (        ) N
+() S 8 T () S 16 T () S 24 T (   }) N
+() S 8 T () S 16 T () S 24 T (   ) N
+() S 8 T () S 16 T () S 24 T (   ) N
+(    }\);) N
+() N
+(   }) N
+() N
+() N
+() N
+() N
+() N
+() N
+() N
+() N
+() N
+() N
+() N
+() N
+() N
+() N
+() N
+() N
+() N
+() N
+() N
+() N
+() N
+() N
+() N
+() N
+() N
+() N
+() N
+() N
+() N
+() N
+() N
+() N
+() N
+() N
+(void) k n
+(pc_dertestfun\() p n
+(  ) S
+(const) K
+( amrex::Box& bx,) p n
+(  amrex::FArrayBox& derfab,) N
+(  ) S
+(int) k
+( ) p
+(/*dcomp*/) c
+(,) p n
+(  ) S
+(int) k
+( ) p
+(/*ncomp*/) c
+(,) p n
+(  ) S
+(const) K
+( amrex::FArrayBox& datfab,) p n
+(  ) S
+(const) K
+( amrex::Geometry& geomdata,) p n
+(  amrex::Real ) S
+(/*time*/) c
+(,) p n
+(  ) S
+(const) K
+( ) p
+(int) k
+(* ) p
+(/*bcrec*/) c
+(,) p n
+(  ) S
+(int) k
+( ) p
+(/*level*/) c
+(\)) p n
+({) N
+(  ) S
+(auto) K
+( ) p
+(const) K
+( data = datfab.const_array\(\);) p n
+(  ) S
+(auto) K
+( testfun = derfab.array\(\);) p n
+() N
+() N
+() N
+(  ) S
+(auto) K
+( ) p
+(const) K
+( dat = datfab.const_array\(\);) p n
+(  ) S
+(auto) K
+( vel_ders = derfab.array\(\);) p n
+(  ) N
+(  ) S
+(const) K
+( amrex::Box& gbx = amrex::grow\(bx, 1\);) p n
+(  ) N
+(  amrex::FArrayBox local\(gbx, 3, amrex::The_Async_Arena\(\)\);) N
+(  ) S
+(auto) K
+( larr = local.array\(\);) p n
+(  ) N
+(  ) S
+(const) K
+( ) p
+(auto) K
+(& flag_fab = amrex::getEBCellFlagFab\(datfab\);) p n
+(  ) S
+(const) K
+( ) p
+(auto) K
+(& typ = flag_fab.getType\(bx\);) p n
+(  ) S
+(if) K
+( \(typ == amrex::FabType::covered\) {) p n
+(Derive.cpp) (Page 18/23) (Mar 06, 23 14:55) title
+border
+grestore
+(Printed by Jay Standridge) rhead
+(Derive.cpp) (9/12) (Monday March 06, 2023) footer
+end % of iso1dict
+pagesave restore
+showpage
+%%Page: (19-20) 10
+%%BeginPageSetup
+/pagesave save def
+sh 0 translate 90 rotate
+%%EndPageSetup
+iso1dict begin
+gsave
+llx lly 12 add translate
+/v 0 store
+/x0 x v get 3.147420 add sx cw mul add store
+/y0 y v get bfs th add sub store
+x0 y0 moveto
+(    derfab.setVal<amrex::RunOn::Device>\(0.0, bx\);) p n
+(    ) S
+(return) K
+(;) p n
+(  }) N
+(  ) S
+(const) K
+( ) p
+(auto) K
+(& flags = flag_fab.const_array\(\);) p n
+(  ) S
+(const) K
+( ) p
+(bool) k
+( all_regular = typ == amrex::FabType::regular;) p n
+() N
+() N
+() N
+() N
+() N
+(  ) N
+(  ) S
+(const) K
+( amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> prob_low =) p n
+(    geomdata.ProbLoArray\(\);) N
+(  ) S
+(const) K
+( amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> prob_high =) p n
+(    geomdata.ProbHiArray\(\);) N
+(  ) S
+(const) K
+( amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> ddx =) p n
+(    geomdata.CellSizeArray\(\);) N
+(  AMREX_D_TERM\() S
+(const) K
+( amrex::Real centerx = 0.5 * \(prob_low[0] + prob_high[0]\);) p n
+(               , ) S
+(const) K
+( amrex::Real centery = 0.5 * \(prob_low[1] + prob_high[1]\);) p n
+(               , ) S
+(const) K
+( amrex::Real centerz = 0.5 * \(prob_low[2] + prob_high[2]\)\)) p n
+(;) N
+() N
+(  amrex::ParallelFor\(bx, [=] AMREX_GPU_DEVICE\() S
+(int) k
+( i, ) p
+(int) k
+( j, ) p
+(int) k
+( k\) noexcept {) p n
+() S 8 T () S 16 T () S 24 T (   AMREX_D_TERM\() N
+() S 8 T () S 16 T () S 24 T () S 32 T () S 40 T () S
+(const) K
+( amrex::Real x = prob_low[0] + \(i +) p n
+( 0.5\) * ddx[0] - centerx;) N
+() S 8 T () S 16 T () S 24 T () S 32 T () S 40 T (, ) S
+(const) K
+( amrex::Real y = prob_low[1] + \(j) p n
+( + 0.5\) * ddx[1] - centery;) N
+() S 8 T () S 16 T () S 24 T () S 32 T () S 40 T (, ) S
+(const) K
+( amrex::Real z = prob_low[2] + \(k) p n
+( + 0.5\) * ddx[2] - centerz;\);) N
+() S 8 T () S 16 T () S 24 T (   ) S
+(const) K
+( amrex::Real r = sqrt\(AMREX_D_TERM\(x * x, +y * y) p n
+(, +z * z\)\);) N
+() S 8 T () S 16 T () S 24 T (   testfun\(i, j, k,0\) = exp\(-.5*r*r\)*cos\(5*3.1415926*r\);) N
+() S 8 T () S 16 T () S 24 T (   testfun\(i, j, k,1\) = -\(cos\(5*3.1415926*r\) + \(5*3.1415) N
+(926/r\)*sin\(5*3.1415926*r\)\)*exp\(-.5*r*r\)*x;) N
+() S 8 T () S 16 T () S 24 T (   testfun\(i, j, k,2\) = -\(cos\(5*3.1415926*r\) + \(5*3.1415) N
+(926/r\)*sin\(5*3.1415926*r\)\)*exp\(-.5*r*r\)*y;) N
+() S 8 T () S 16 T () S 24 T (   testfun\(i, j, k,3\) = -\(cos\(5*3.1415926*r\) + \(5*3.1415) N
+(926/r\)*sin\(5*3.1415926*r\)\)*exp\(-.5*r*r\)*z;) N
+() S 8 T () S 16 T () S 24 T (   ) S
+(//testfun\(i, j, k, 0\)  = \(x+y-.5*z>0\)? 0 : 1;) c n
+() p 8 T () S 16 T () S 24 T (   ) S
+(//testfun\(i, j, k, 1\)  = 0;) c n
+() p 8 T () S 16 T () S 24 T (   ) S
+(//testfun\(i, j, k, 2\)  = 0;) c n
+() p 8 T () S 16 T () S 24 T (   ) S
+(//testfun\(i, j, k, 3\)  = 0;) c n
+() p 8 T () S 16 T () S 24 T ( }\);) N
+() S 8 T () S 16 T () S 24 T (   ) N
+(  amrex::ParallelFor\(gbx, [=] AMREX_GPU_DEVICE\() S
+(int) k
+( i, ) p
+(int) k
+( j, ) p
+(int) k
+( k\) noexcept {) p n
+() S 8 T () S 16 T () S 24 T (    ) N
+() S 8 T () S 16 T () S 24 T (    AMREX_D_TERM\() N
+() S 8 T () S 16 T () S 24 T () S 32 T () S 40 T ( ) S
+(const) K
+( amrex::Real x = prob_low[0] + \(i ) p n
+(+ 0.5\) * ddx[0] - centerx;) N
+() S 8 T () S 16 T () S 24 T () S 32 T () S 40 T ( , ) S
+(const) K
+( amrex::Real y = prob_low[1] + \() p n
+(j + 0.5\) * ddx[1] - centery;) N
+() S 8 T () S 16 T () S 24 T () S 32 T () S 40 T ( , ) S
+(const) K
+( amrex::Real z = prob_low[2] + \() p n
+(k + 0.5\) * ddx[2] - centerz;\);) N
+() S 8 T () S 16 T () S 24 T (    ) S
+(const) K
+( amrex::Real r = sqrt\(AMREX_D_TERM\(x * x, +y * ) p n
+(y, +z * z\)\);) N
+() S 8 T () S 16 T () S 24 T (    larr\(i, j, k\) = exp\(-.5*r*r\)*cos\(5*3.1415926*r\);) N
+() S 8 T () S 16 T () S 24 T (    ) S
+(//larr\(i, j, k\)   = \(x+y-.5*z>0\)? 0 : 1;) c n
+() p 8 T () S 16 T () S 24 T (  }\);) N
+(  ) N
+(  AMREX_D_TERM\() S
+(const) K
+( amrex::Real dx = geomdata.CellSize\(0\);) p n
+(               , ) S
+(const) K
+( amrex::Real dy = geomdata.CellSize\(1\);) p n
+(               , ) S
+(const) K
+( amrex::Real dz = geomdata.CellSize\(2\);\);) p n
+() N
+(  amrex::ParallelFor\(bx, [=] AMREX_GPU_DEVICE\() S
+(int) k
+( i, ) p
+(int) k
+( j, ) p
+(int) k
+( k\) noexcept {) p n
+() S 8 T () S 16 T () S 24 T (   AMREX_D_TERM\() S
+(int) k
+( im; ) p
+(int) k
+( ip;, ) p
+(int) k
+( jm; ) p
+(int) k
+( jp;, ) p
+(int) k
+( km) p n
+(; ) S
+(int) k
+( kp;\);) p n
+() S 8 T () S 16 T () S 24 T (   AMREX_D_TERM\(get_idx\(i, 0, all_regular, flags\(i, j, k) N
+(\), im, ip\);) N
+(Derive.cpp) (Page 19/23) (Mar 06, 23 14:55) title
+border
+/v 1 store
+/x0 x v get 3.147420 add sx cw mul add store
+/y0 y v get bfs th add sub store
+x0 y0 moveto
+() p 8 T () S 16 T () S 24 T () S 32 T () S 40 T (, get_idx\(j, 1, all_regular, flags\(i, j,) N
+( k\), jm, jp\);) N
+() S 8 T () S 16 T () S 24 T () S 32 T () S 40 T (, get_idx\(k, 2, all_regular, flags\(i, j,) N
+( k\), km, kp\);\);) N
+() S 8 T () S 16 T () S 24 T (   AMREX_D_TERM\() S
+(const) K
+( amrex::Real wi = get_weight\(im, ip) p n
+(\);) N
+() S 8 T () S 16 T () S 24 T () S 32 T () S 40 T (, ) S
+(const) K
+( amrex::Real wj = get_weight\(jm, ) p n
+(jp\);) N
+() S 8 T () S 16 T () S 24 T () S 32 T () S 40 T (, ) S
+(const) K
+( amrex::Real wk = get_weight\(km, ) p n
+(kp\);\);) N
+() N
+() S 8 T () S 16 T () S 24 T (   testfun\(i, j, k, 4\) = wi * \(larr\(ip, j, k\) - larr\(im,) N
+( j, k\)\) / dx; ) N
+() S 8 T () S 16 T () S 24 T (   testfun\(i, j, k, 5\) = wj * \(larr\(i, jp, k\) - larr\(i, ) N
+(jm, k\)\) / dy; ) N
+() S 8 T () S 16 T () S 24 T (   testfun\(i, j, k, 6\) = wk * \(larr\(i, j, kp\) - larr\(i, ) N
+(j, km\)\) / dz;) N
+() N
+() S 8 T () S 16 T () S 24 T (   testfun\(i,j,k,7\) = testfun\(i,j,k,1\)-testfun\(i,j,k,4\);) N
+() S 8 T () S 16 T () S 24 T (   testfun\(i,j,k,8\) = testfun\(i,j,k,2\)-testfun\(i,j,k,5\);) N
+() S 8 T () S 16 T () S 24 T (   testfun\(i,j,k,9\) = testfun\(i,j,k,3\)-testfun\(i,j,k,6\);) N
+() N
+() N
+() S 8 T () S 16 T () S 24 T (   testfun\(i,j,k,10\) = dx;) N
+() S 8 T () S 16 T () S 24 T (   testfun\(i,j,k,11\) = dy;) N
+() S 8 T () S 16 T () S 24 T (   testfun\(i,j,k,12\) = dz;) N
+() S 8 T () S 16 T () S 24 T (   testfun\(i,j,k,13\) = kp;) N
+() S 8 T () S 16 T () S 24 T (   testfun\(i,j,k,14\) = k;) N
+() S 8 T () S 16 T () S 24 T (   testfun\(i,j,k,15\) = km;) N
+() S 8 T () S 16 T () S 24 T (     ) N
+() S 8 T () S 16 T () S 24 T (   ) N
+() S 8 T () S 16 T () S 24 T ( }\);) N
+(}) N
+() N
+() N
+() N
+() N
+() N
+() N
+() N
+() N
+() N
+() N
+() N
+() N
+() N
+() N
+() N
+() N
+() N
+(#ifdef) K
+( PELEC_USE_MASA) p n
+(void) k n
+(pc_derrhommserror\() p n
+(  ) S
+(const) K
+( amrex::Box& bx,) p n
+(  amrex::FArrayBox& derfab,) N
+(  ) S
+(int) k
+( ) p
+(/*dcomp*/) c
+(,) p n
+(  ) S
+(int) k
+( ) p
+(/*ncomp*/) c
+(,) p n
+(  ) S
+(const) K
+( amrex::FArrayBox& datfab,) p n
+(  ) S
+(const) K
+( amrex::Geometry& geomdata,) p n
+(  amrex::Real ) S
+(/*time*/) c
+(,) p n
+(  ) S
+(const) K
+( ) p
+(int) k
+(* ) p
+(/*bcrec*/) c
+(,) p n
+(  ) S
+(int) k
+( ) p
+(/*level*/) c
+(\)) p n
+({) N
+(  ) S
+(auto) K
+( ) p
+(const) K
+( dat = datfab.const_array\(\);) p n
+(  ) S
+(auto) K
+( rhommserror = derfab.array\(\);) p n
+() N
+(  ) S
+(const) K
+( amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> prob_lo =) p n
+(    geomdata.ProbLoArray\(\);) N
+(  ) S
+(const) K
+( amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> dx =) p n
+(Derive.cpp) (Page 20/23) (Mar 06, 23 14:55) title
+border
+grestore
+(Printed by Jay Standridge) rhead
+(Derive.cpp) (10/12) (Monday March 06, 2023) footer
+end % of iso1dict
+pagesave restore
+showpage
+%%Page: (21-22) 11
+%%BeginPageSetup
+/pagesave save def
+sh 0 translate 90 rotate
+%%EndPageSetup
+iso1dict begin
+gsave
+llx lly 12 add translate
+/v 0 store
+/x0 x v get 3.147420 add sx cw mul add store
+/y0 y v get bfs th add sub store
+x0 y0 moveto
+(    geomdata.CellSizeArray\(\);) p n
+() N
+(  amrex::ParallelFor\(bx, [=] AMREX_GPU_DEVICE\() S
+(int) k
+( i, ) p
+(int) k
+( j, ) p
+(int) k
+( k\) noexcept {) p n
+(    ) S
+(const) K
+( amrex::Real x = prob_lo[0] + \(i + 0.5\) * dx[0];) p n
+(    ) S
+(const) K
+( amrex::Real y = prob_lo[1] + \(j + 0.5\) * dx[1];) p n
+(    ) S
+(const) K
+( amrex::Real z = prob_lo[2] + \(k + 0.5\) * dx[2];) p n
+() N
+(    ) S
+(const) K
+( amrex::Real rho = masa_eval_3d_exact_rho\(x, y, z\);) p n
+(    rhommserror\(i, j, k\) = dat\(i, j, k, URHO\) - rho;) N
+(  }\);) N
+(}) N
+() N
+(void) k n
+(pc_derummserror\() p n
+(  ) S
+(const) K
+( amrex::Box& bx,) p n
+(  amrex::FArrayBox& derfab,) N
+(  ) S
+(int) k
+( ) p
+(/*dcomp*/) c
+(,) p n
+(  ) S
+(int) k
+( ) p
+(/*ncomp*/) c
+(,) p n
+(  ) S
+(const) K
+( amrex::FArrayBox& datfab,) p n
+(  ) S
+(const) K
+( amrex::Geometry& geomdata,) p n
+(  amrex::Real ) S
+(/*time*/) c
+(,) p n
+(  ) S
+(const) K
+( ) p
+(int) k
+(* ) p
+(/*bcrec*/) c
+(,) p n
+(  ) S
+(int) k
+( ) p
+(/*level*/) c
+(\)) p n
+({) N
+(  ) S
+(auto) K
+( ) p
+(const) K
+( dat = datfab.const_array\(\);) p n
+(  ) S
+(auto) K
+( ummserror = derfab.array\(\);) p n
+() N
+(  ) S
+(const) K
+( amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> prob_lo =) p n
+(    geomdata.ProbLoArray\(\);) N
+(  ) S
+(// const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> prob_hi =) c n
+(  ) p
+(// geomdata.ProbHiArray\(\);) c n
+(  ) p
+(const) K
+( amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> dx =) p n
+(    geomdata.CellSizeArray\(\);) N
+() N
+(  amrex::ParallelFor\(bx, [=] AMREX_GPU_DEVICE\() S
+(int) k
+( i, ) p
+(int) k
+( j, ) p
+(int) k
+( k\) noexcept {) p n
+(    ) S
+(const) K
+( amrex::Real x = prob_lo[0] + \(i + 0.5\) * dx[0];) p n
+(    ) S
+(const) K
+( amrex::Real y = prob_lo[1] + \(j + 0.5\) * dx[1];) p n
+(    ) S
+(const) K
+( amrex::Real z = prob_lo[2] + \(k + 0.5\) * dx[2];) p n
+() N
+(    ) S
+(const) K
+( amrex::Real u = masa_eval_3d_exact_u\(x, y, z\);) p n
+(    ummserror\(i, j, k\) = dat\(i, j, k, UMX\) / dat\(i, j, k, URHO\) - u;) N
+(  }\);) N
+(}) N
+() N
+(void) k n
+(pc_dervmmserror\() p n
+(  ) S
+(const) K
+( amrex::Box& bx,) p n
+(  amrex::FArrayBox& derfab,) N
+(  ) S
+(int) k
+( ) p
+(/*dcomp*/) c
+(,) p n
+(  ) S
+(int) k
+( ) p
+(/*ncomp*/) c
+(,) p n
+(  ) S
+(const) K
+( amrex::FArrayBox& datfab,) p n
+(  ) S
+(const) K
+( amrex::Geometry& geomdata,) p n
+(  amrex::Real ) S
+(/*time*/) c
+(,) p n
+(  ) S
+(const) K
+( ) p
+(int) k
+(* ) p
+(/*bcrec*/) c
+(,) p n
+(  ) S
+(int) k
+( ) p
+(/*level*/) c
+(\)) p n
+({) N
+(  ) S
+(auto) K
+( ) p
+(const) K
+( dat = datfab.const_array\(\);) p n
+(  ) S
+(auto) K
+( vmmserror = derfab.array\(\);) p n
+() N
+(  ) S
+(const) K
+( amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> prob_lo =) p n
+(    geomdata.ProbLoArray\(\);) N
+(  ) S
+(// const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> prob_hi =) c n
+(  ) p
+(// geomdata.ProbHiArray\(\);) c n
+(  ) p
+(const) K
+( amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> dx =) p n
+(    geomdata.CellSizeArray\(\);) N
+() N
+(  amrex::ParallelFor\(bx, [=] AMREX_GPU_DEVICE\() S
+(int) k
+( i, ) p
+(int) k
+( j, ) p
+(int) k
+( k\) noexcept {) p n
+(    ) S
+(const) K
+( amrex::Real x = prob_lo[0] + \(i + 0.5\) * dx[0];) p n
+(    ) S
+(const) K
+( amrex::Real y = prob_lo[1] + \(j + 0.5\) * dx[1];) p n
+(Derive.cpp) (Page 21/23) (Mar 06, 23 14:55) title
+border
+/v 1 store
+/x0 x v get 3.147420 add sx cw mul add store
+/y0 y v get bfs th add sub store
+x0 y0 moveto
+(    ) p
+(const) K
+( amrex::Real z = prob_lo[2] + \(k + 0.5\) * dx[2];) p n
+() N
+(    ) S
+(const) K
+( amrex::Real v = masa_eval_3d_exact_v\(x, y, z\);) p n
+(    vmmserror\(i, j, k\) = dat\(i, j, k, UMY\) / dat\(i, j, k, URHO\) - v;) N
+(  }\);) N
+(}) N
+() N
+(void) k n
+(pc_derwmmserror\() p n
+(  ) S
+(const) K
+( amrex::Box& bx,) p n
+(  amrex::FArrayBox& derfab,) N
+(  ) S
+(int) k
+( ) p
+(/*dcomp*/) c
+(,) p n
+(  ) S
+(int) k
+( ) p
+(/*ncomp*/) c
+(,) p n
+(  ) S
+(const) K
+( amrex::FArrayBox& datfab,) p n
+(  ) S
+(const) K
+( amrex::Geometry& geomdata,) p n
+(  amrex::Real ) S
+(/*time*/) c
+(,) p n
+(  ) S
+(const) K
+( ) p
+(int) k
+(* ) p
+(/*bcrec*/) c
+(,) p n
+(  ) S
+(int) k
+( ) p
+(/*level*/) c
+(\)) p n
+({) N
+(  ) S
+(auto) K
+( ) p
+(const) K
+( dat = datfab.const_array\(\);) p n
+(  ) S
+(auto) K
+( wmmserror = derfab.array\(\);) p n
+() N
+(  ) S
+(const) K
+( amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> prob_lo =) p n
+(    geomdata.ProbLoArray\(\);) N
+(  ) S
+(// const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> prob_hi =) c n
+(  ) p
+(// geomdata.ProbHiArray\(\);) c n
+(  ) p
+(const) K
+( amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> dx =) p n
+(    geomdata.CellSizeArray\(\);) N
+() N
+(  amrex::ParallelFor\(bx, [=] AMREX_GPU_DEVICE\() S
+(int) k
+( i, ) p
+(int) k
+( j, ) p
+(int) k
+( k\) noexcept {) p n
+(    ) S
+(const) K
+( amrex::Real x = prob_lo[0] + \(i + 0.5\) * dx[0];) p n
+(    ) S
+(const) K
+( amrex::Real y = prob_lo[1] + \(j + 0.5\) * dx[1];) p n
+(    ) S
+(const) K
+( amrex::Real z = prob_lo[2] + \(k + 0.5\) * dx[2];) p n
+() N
+(    ) S
+(const) K
+( amrex::Real w = masa_eval_3d_exact_w\(x, y, z\);) p n
+(    wmmserror\(i, j, k\) = dat\(i, j, k, UMZ\) / dat\(i, j, k, URHO\) - w;) N
+(  }\);) N
+(}) N
+() N
+(void) k n
+(pc_derpmmserror\() p n
+(  ) S
+(const) K
+( amrex::Box& bx,) p n
+(  amrex::FArrayBox& derfab,) N
+(  ) S
+(int) k
+( ) p
+(/*dcomp*/) c
+(,) p n
+(  ) S
+(int) k
+( ) p
+(/*ncomp*/) c
+(,) p n
+(  ) S
+(const) K
+( amrex::FArrayBox& datfab,) p n
+(  ) S
+(const) K
+( amrex::Geometry& geomdata,) p n
+(  amrex::Real ) S
+(/*time*/) c
+(,) p n
+(  ) S
+(const) K
+( ) p
+(int) k
+(* ) p
+(/*bcrec*/) c
+(,) p n
+(  ) S
+(int) k
+( ) p
+(/*level*/) c
+(\)) p n
+({) N
+(  ) S
+(auto) K
+( ) p
+(const) K
+( dat = datfab.const_array\(\);) p n
+(  ) S
+(auto) K
+( pmmserror = derfab.array\(\);) p n
+() N
+(  ) S
+(const) K
+( amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> prob_lo =) p n
+(    geomdata.ProbLoArray\(\);) N
+(  ) S
+(// const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> prob_hi =) c n
+(  ) p
+(// geomdata.ProbHiArray\(\);) c n
+(  ) p
+(const) K
+( amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> dx =) p n
+(    geomdata.CellSizeArray\(\);) N
+() N
+(  amrex::ParallelFor\(bx, [=] AMREX_GPU_DEVICE\() S
+(int) k
+( i, ) p
+(int) k
+( j, ) p
+(int) k
+( k\) noexcept {) p n
+(    ) S
+(const) K
+( amrex::Real x = prob_lo[0] + \(i + 0.5\) * dx[0];) p n
+(    ) S
+(const) K
+( amrex::Real y = prob_lo[1] + \(j + 0.5\) * dx[1];) p n
+(    ) S
+(const) K
+( amrex::Real z = prob_lo[2] + \(k + 0.5\) * dx[2];) p n
+() N
+(    ) S
+(auto) K
+( eos = pele::physics::PhysicsType::eos\(\);) p n
+(    ) S
+(const) K
+( amrex::Real rho = dat\(i, j, k, URHO\);) p n
+(    ) S
+(const) K
+( amrex::Real rhoinv = 1.0 / rho;) p n
+(Derive.cpp) (Page 22/23) (Mar 06, 23 14:55) title
+border
+grestore
+(Printed by Jay Standridge) rhead
+(Derive.cpp) (11/12) (Monday March 06, 2023) footer
+end % of iso1dict
+pagesave restore
+showpage
+%%Page: (23) 12
+%%BeginPageSetup
+/pagesave save def
+sh 0 translate 90 rotate
+%%EndPageSetup
+iso1dict begin
+gsave
+llx lly 12 add translate
+/v 0 store
+/x0 x v get 3.147420 add sx cw mul add store
+/y0 y v get bfs th add sub store
+x0 y0 moveto
+(    amrex::Real eint = dat\(i, j, k, UEINT\) * rhoinv;) p n
+(    amrex::Real T = dat\(i, j, k, UTEMP\);) N
+(    amrex::Real massfrac[NUM_SPECIES] = {0.0};) N
+(    ) S
+(for) K
+( \() p
+(int) k
+( n = 0; n < NUM_SPECIES; n++\) {) p n
+(      massfrac[n] = dat\(i, j, k, UFS + n\) * rhoinv;) N
+(    }) N
+() N
+(    amrex::Real pdat;) N
+(    eos.RYET2P\(rho, massfrac, eint, T, pdat\);) N
+(    ) S
+(const) K
+( amrex::Real p = masa_eval_3d_exact_p\(x, y, z\);) p n
+(    pmmserror\(i, j, k\) = pdat - p;) N
+(  }\);) N
+(}) N
+(#endif) K n
+(Derive.cpp) (Page 23/23) (Mar 06, 23 14:55) title
+border
+grestore
+(Printed by Jay Standridge) rhead
+(Derive.cpp) (12/12) (Monday March 06, 2023) footer
+end % of iso1dict
+pagesave restore
+showpage
+
+%%Trailer
+end
+%%EOF
