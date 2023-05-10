@@ -1377,7 +1377,7 @@ PeleC::pc_entropyInequality(
 			   CKWYR(dat(i,j,k,URHO), larr(i,j,k,3), massfrac, prod_rate);
 			   // prod rate is in mole/(cm^3 s ), need to convert to mole/(m^3 s)
 			   for (int n = 0; n < NUM_SPECIES; n++) {
-			     prod_rate[n] *=  pow(10,6);
+			     //prod_rate[n] *=  pow(10,6);
 			   }
 			   //Calculate fourth term
 			   entropyInequality(i,j,k,3) = 0.0;
@@ -1422,12 +1422,22 @@ PeleC::pc_entropyInequality(
 
 
 			   
-			   
-			   for (int n = 0; n < NUM_REACTIONS; n++) {
+			   entropyInequality(i,j,k,5)=0;
+			   for (int n = 1; n < NUM_REACTIONS+1; n++) {
 			     CKINU(n, nspecr, kip, nup);
-			     entropyInequality(i,j,k,9+NUM_SPECIES+n)=0;
+			     entropyInequality(i,j,k,9+NUM_SPECIES+n-1)=0;
+			     std::cout<<n<<std::endl;
+			     std::cout<<nspec<<std::endl;
 			     for (int m = 0; m < nspec; m++){
-			        entropyInequality(i,j,k,9+NUM_SPECIES+n)+= 1e6 * (q_f[n] - q_r[n]) * static_cast<double>(nu[m]) * gibbs_fe[ki[m]-1];
+			       std::cout<<ki[m]-1<<" ";}
+			     std::cout<<std::endl;
+			     for (int m = 0; m < nspec; m++){
+			       std::cout<< static_cast<double>(nu[m])<<" ";}
+			     std::cout<<std::endl;
+			     std::cout<<1e-6*(q_f[n-1] - q_r[n-1])<<std::endl;
+			     for (int m = 0; m < nspec; m++){  
+			       entropyInequality(i,j,k,9+NUM_SPECIES+n-1)+= 1e-6*(q_f[n-1] - q_r[n-1]) * static_cast<double>(nu[m]) * gibbs_fe[ki[m]-1];
+			       entropyInequality(i,j,k,5)+= 1e-6*(q_f[n-1] - q_r[n-1]) * static_cast<double>(nu[m]) * gibbs_fe[ki[m]-1];
 			     }
 			   }
 			   
