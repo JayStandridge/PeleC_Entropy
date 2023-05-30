@@ -527,8 +527,9 @@ PeleC::variableSetUp()
   derive_lst.addComponent("magmom", desc_lst, State_Type, Density, NVAR);
 
 
-   //   // Entropy Inequality
-  amrex::Vector<std::string> var_names_EI(9+NUM_SPECIES+NUM_REACTIONS);
+      // Entropy Inequality
+  int test = NUM_REACTIONS;
+  amrex::Vector<std::string> var_names_EI(9+NUM_SPECIES+test);
    var_names_EI[0] = "EITerm1";
    var_names_EI[1] = "EITerm2";
    var_names_EI[2] = "EITerm3";
@@ -541,55 +542,13 @@ PeleC::variableSetUp()
    for (int i = 0; i < NUM_SPECIES; i++) {
     var_names_EI[9+i] = "EI(" + spec_names[i] + ")";
   }
-   for (int i = 0; i < NUM_REACTIONS; i++) {
-     var_names_EI[9+NUM_SPECIES+i] = "EI(Reaction " + std::to_string(i) + ")";
+  for (int i = 0; i < test; i++) {
+     var_names_EI[9+NUM_SPECIES+i] = "EI(R-" + std::to_string(i) + ")";
   }
-   // var_names_EI[9] = "EI(H2)";
-   // var_names_EI[10]= "EI(O2)";
-   // var_names_EI[11]= "EI(H20)";
-   // var_names_EI[12]= "EI(H)";
-   // var_names_EI[13]= "EI(O)";
-   // var_names_EI[14]= "EI(OH)";
-   // var_names_EI[15]= "EI(HO2)";
-   // var_names_EI[16]= "EI(H2O2)";
-   // var_names_EI[17]= "EI(N2)";
-
    derive_lst.add(
-     "entropyInequality", amrex::IndexType::TheCellType(), 9+NUM_SPECIES+NUM_REACTIONS, var_names_EI,
+     "entropyInequality", amrex::IndexType::TheCellType(), 9 + NUM_SPECIES + test, var_names_EI,
      PeleC::pc_entropyInequality, amrex::DeriveRec::GrowBoxByOne);
-
-     // derive_lst.add(
-     // "entropyInequality", amrex::IndexType::TheCellType(), 1,
-     // pc_entropyInequality, amrex::DeriveRec::TheSameBox);
    derive_lst.addComponent("entropyInequality", desc_lst, State_Type, Density, NVAR);
-
-
-
-  
-
-    // Velocity gradient tensor
-  amrex::Vector<std::string> var_names_testfun(16);
-  var_names_testfun[0] = "F";
-  var_names_testfun[1] = "FxExact";
-  var_names_testfun[2] = "FyExact";
-  var_names_testfun[3] = "FzExact";
-  var_names_testfun[4] = "FxCode";
-  var_names_testfun[5] = "FyCode";
-  var_names_testfun[6] = "FzCode";
-  var_names_testfun[7] = "FxDiff";
-  var_names_testfun[8] = "FyDiff";
-  var_names_testfun[9] = "FzDiff";
-  var_names_testfun[10]= "wi";
-  var_names_testfun[11]= "wj";
-  var_names_testfun[12]= "wk";
-  var_names_testfun[13]= "kp";
-  var_names_testfun[14]= "k";
-  var_names_testfun[15]= "km";
-
-  derive_lst.add(
-    "testfun", amrex::IndexType::TheCellType(), 16, var_names_testfun,
-    pc_dertestfun, amrex::DeriveRec::GrowBoxByOne);
-  derive_lst.addComponent("testfun", desc_lst, State_Type, Density, NVAR);
 
 
 

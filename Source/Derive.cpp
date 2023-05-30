@@ -5,6 +5,8 @@
 #include "PeleC.H"
 #include "IndexDefines.H"
 
+#include "temp.H"
+
 #include<math.h>
 #include<stdlib.h>
 
@@ -902,6 +904,7 @@ pc_vel_ders(
 {
   auto const dat = datfab.const_array();
   auto vel_ders = derfab.array();
+#if false
 
   const amrex::Box& gbx = amrex::grow(bx, 1);
 
@@ -953,11 +956,11 @@ pc_vel_ders(
 			 });
 }
 
+#endif
+}
 
 
-
-
-
+#if NUM_SPECIES > 1
 
 void
 PeleC::pc_entropyInequality(
@@ -1053,16 +1056,16 @@ PeleC::pc_entropyInequality(
   auto const* ltransparm = trans_parms.device_trans_parm();
 
 
-  //Get molecular weight/ inverse molecuilar weight prepared
-  amrex::Real mw[NUM_SPECIES]  = {0.0};
-  amrex::Real imw[NUM_SPECIES] = {0.0};
+  //Get molecular weight/ inverse molecular weight prepared
+  amrex::Real mw_arr[NUM_SPECIES]  = {0.0};
+  amrex::Real imw_arr[NUM_SPECIES] = {0.0};
   amrex::Real eps[NUM_SPECIES]  = {0.0};
   amrex::Real sig[NUM_SPECIES] = {0.0};
   amrex::Real eps_ij[NUM_SPECIES][NUM_SPECIES]  = {0.0};
   amrex::Real sig_ij[NUM_SPECIES][NUM_SPECIES]  = {0.0};
   auto eos = pele::physics::PhysicsType::eos();
-  eos.inv_molecular_weight(imw);
-  eos.molecular_weight(mw);
+  eos.inv_molecular_weight(imw_arr);
+  eos.molecular_weight(mw_arr);
   egtransetEPS(eps);
   egtransetSIG(sig);
   
@@ -1086,11 +1089,11 @@ PeleC::pc_entropyInequality(
 			   c_tot(i,j,k)=0;
 			   for (int n = 0; n < NUM_SPECIES; n++) {
 			     massfrac[n] = dat(i, j, k, UFS + n) * rhoInv;
-			     c_tot(i,j,k)+=dat(i,j,k,UFS+n)*imw[n];
+			     c_tot(i,j,k)+=dat(i,j,k,UFS+n)*imw_arr[n];
 			   }
 			   eos.Y2X(massfrac, molefrac);
 			   for (int n = 0; n < NUM_SPECIES; n++) {
-			     mmm(i,j,k) += mw[n]*molefrac[n];
+			     mmm(i,j,k) += mw_arr[n]*molefrac[n];
 			   }
 			   auto trans = pele::physics::PhysicsType::transport();
 			   amrex::Real mu = 0.0, lam = 0.0, dum1 = 0.0;
@@ -1106,13 +1109,13 @@ PeleC::pc_entropyInequality(
 			   amrex::Real temp2 = 0.0;
 
 			   for (int n = 0; n< NUM_SPECIES; n++){
-			     temp1 += pow(mw[n],.511) * molefrac[n];
-			     temp2 += pow(mw[n],.489) * molefrac[n];
+			     temp1 += pow(mw_arr[n],.511) * molefrac[n];
+			     temp2 += pow(mw_arr[n],.489) * molefrac[n];
 			   }
 			   for (int n = 0; n < NUM_SPECIES; n++) {
 			     d_arr(i, j, k, n) = ddiag[n];
 			     if (do_soret){
-			       Dti(i,j,k,n) = -2.59 * pow(10,-7) * pow(T,.659) * (mw[n] * molefrac[n] / temp1 - massfrac[n]) * (temp1 / temp2);
+			       Dti(i,j,k,n) = -2.59 * pow(10,-7) * pow(T,.659) * (mw_arr[n] * molefrac[n] / temp1 - massfrac[n]) * (temp1 / temp2);
 			     } else {
 			       Dti(i,j,k,n) = 0.0;
 			     }
@@ -1339,7 +1342,7 @@ PeleC::pc_entropyInequality(
 				   omega_d(i,j,k)=1.16145*pow(t_star,-.14874) +
 				     .52487*std::exp(-.7732*t_star) +
 				     2.16178*std::exp(-2.43787*t_star);
-				   Dija(i,j,k,ii+NUM_SPECIES*jj) = 0.0188*pow( pow(larr(i,j,k,3),3) * (imw[ii] + imw[jj])  , .5) /
+				   Dija(i,j,k,ii+NUM_SPECIES*jj) = 0.0188*pow( pow(larr(i,j,k,3),3) * (imw_arr[ii] + imw_arr[jj])  , .5) /
 				     (pow(sig_ij[ii][jj],2)*omega_d(i,j,k) * pabs);
 				   
 				 }
@@ -1362,7 +1365,10 @@ PeleC::pc_entropyInequality(
 			   amrex::Real tc[5] = {0.0};
 			   amrex::Real gibbs_fe[NUM_SPECIES] = {0.0};
 			   amrex::Real prod_rate[NUM_SPECIES] = {0.0};
+			   amrex::Real prod_rate2[NUM_SPECIES] = {0.0};
 			   
+			   amrex::Real rho = dat(i, j, k, URHO);
+
 			   tc[1] = larr(i,j,k,3);
 			   tc[0] = std::log(tc[1]);
 			   tc[2] = pow(tc[1],2);
@@ -1371,17 +1377,26 @@ PeleC::pc_entropyInequality(
 			   gibbs(gibbs_fe,tc);
 			   // Get chemical potential, or molar gibbs
 			   for (int n = 0; n < NUM_SPECIES; n++) {
-			     gibbs_fe[n] *= pele::physics::Constants::RU * larr(i,j,k,3) * mw[n] * pow(10,-7);
+			     gibbs_fe[n] *= pele::physics::Constants::RU * larr(i,j,k,3) * mw_arr[n];// * pow(10,-7); keep in CGS
 			   }
 			   // Get rate of production of each species
-			   CKWYR(dat(i,j,k,URHO), larr(i,j,k,3), massfrac, prod_rate);
-			   // prod rate is in mole/(cm^3 s ), need to convert to mole/(m^3 s)
+			   amrex::Real sc[NUM_SPECIES] = {0.0};
 			   for (int n = 0; n < NUM_SPECIES; n++) {
-			     //prod_rate[n] *=  pow(10,6);
+			     massfrac[n] = dat(i, j, k, UFS + n) * rhoInv;
 			   }
+			   CKYTCR(rho,rho,massfrac, sc); //Need species concentration first
+			     
+			   for (int i = 0; i < NUM_SPECIES; i++) { 
+			     sc[i] *= 1e6; // in SI units for productionRate
+
+			   }
+
+			   productionRate(prod_rate, sc, tc[1]);
+
 			   //Calculate fourth term
 			   entropyInequality(i,j,k,3) = 0.0;
 			   for (int n = 0; n < NUM_SPECIES; n++) {
+			     prod_rate[n] *= 1e-6;
 			     entropyInequality(i,j,k,3) += prod_rate[n] * gibbs_fe[n];
 			   }
 
@@ -1392,18 +1407,21 @@ PeleC::pc_entropyInequality(
 			                                entropyInequality(i,j,k,2) +
 			                                entropyInequality(i,j,k,3);
 			   
-			   //Check magnitude of mole fraction gradient, temporary
+			   //Check each species portion of fourth term
 			   for (int n = 0; n < NUM_SPECIES; n++) {
-			     entropyInequality(i,j,k,9+n)= prod_rate[n] * gibbs_fe[n];
-			     
+			     entropyInequality(i,j,k,9+n)= prod_rate[n]* gibbs_fe[n];
 
 			     
 			   }
 			   amrex::Real species_concentration[NUM_SPECIES] = {0.0};
+			   amrex::Real q_f_temp[NUM_REACTIONS] = {0.0};
+			   amrex::Real q_r_temp[NUM_REACTIONS] = {0.0};
 			   amrex::Real q_f[NUM_REACTIONS] = {0.0};
 			   amrex::Real q_r[NUM_REACTIONS] = {0.0};
+			   amrex::Real prod_rate_2[NUM_SPECIES] = {0.0};
+
 			   amrex::Real wdot[NUM_REACTIONS] = {0.0};
-			   amrex::Real rho = dat(i, j, k, 0);
+			   amrex::Real nu_spec = 0.0;
 			   int nspec = 0;
 			   int& nspecr = nspec;
 			   int* temp;
@@ -1413,74 +1431,41 @@ PeleC::pc_entropyInequality(
 			   int nu[nspec] = {0};
 			   int* kip = ki;
 			   int* nup = nu;
-			   
-			   // get concentration in SI units
-			   for (int i = 0; i < NUM_SPECIES; i++) { 
-			     species_concentration[i] = 1e6 * rho * massfrac[i] * imw[i];
+			   int rmap[21] = {0};
+			   int* rmapp = rmap;
+
+			   GET_RMAP(rmapp);
+
+			   progressRateFR(q_f_temp, q_r_temp, sc, tc[1]);
+			   for (int i = 0; i < NUM_REACTIONS; i++) { 
+			     q_f[rmap[i]] = q_f_temp[i];
+			     q_r[rmap[i]] = q_r_temp[i];
 			   }
-			   progressRateFR(q_f, q_r, species_concentration, tc[1]);
 
-
-			   
-			   entropyInequality(i,j,k,5)=0;
-			   for (int n = 1; n < NUM_REACTIONS+1; n++) {
-			     CKINU(n, nspecr, kip, nup);
-			     entropyInequality(i,j,k,9+NUM_SPECIES+n-1)=0;
-			     std::cout<<n<<std::endl;
-			     std::cout<<nspec<<std::endl;
+			   entropyInequality(i,j,k,5) = 0.0;
+			   // Prod_rate_2 
+			   // for (int i = 0; i < NUM_REACTIONS; i++){
+			   //   CKINU(i+1, nspecr, kip, nup);
+			   //   wdot[i] = 1e-6 * (q_f[i] - q_r[i]);
+			   //   for (int m = 0; m < nspec; m++){
+			   //     prod_rate_2[ki[m]-1] +=wdot[i] * nu[m];
+			   //   }
+			   // }
+			   for (int n = 0; n < NUM_REACTIONS; n++) {
+			     CKINU(n+1, nspecr, kip, nup);
+			     wdot[n] = 1e-6 * (q_f[n] - q_r[n]);
 			     for (int m = 0; m < nspec; m++){
-			       std::cout<<ki[m]-1<<" ";}
-			     std::cout<<std::endl;
-			     for (int m = 0; m < nspec; m++){
-			       std::cout<< static_cast<double>(nu[m])<<" ";}
-			     std::cout<<std::endl;
-			     std::cout<<1e-6*(q_f[n-1] - q_r[n-1])<<std::endl;
-			     for (int m = 0; m < nspec; m++){  
-			       entropyInequality(i,j,k,9+NUM_SPECIES+n-1)+= 1e-6*(q_f[n-1] - q_r[n-1]) * static_cast<double>(nu[m]) * gibbs_fe[ki[m]-1];
-			       entropyInequality(i,j,k,5)+= 1e-6*(q_f[n-1] - q_r[n-1]) * static_cast<double>(nu[m]) * gibbs_fe[ki[m]-1];
+			       entropyInequality(i,j,k,9+NUM_SPECIES+n) = wdot[n] * nu[m] * gibbs_fe[ki[m]-1];
+			       entropyInequality(i,j,k,5) += wdot[n] * nu[m] * gibbs_fe[ki[m]-1];
 			     }
+			       
 			   }
-			   
-			   
 			   });
 
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+#else
 void
-pc_dertestfun(
+PeleC::pc_entropyInequality(
   const amrex::Box& bx,
   amrex::FArrayBox& derfab,
   int /*dcomp*/,
@@ -1489,104 +1474,24 @@ pc_dertestfun(
   const amrex::Geometry& geomdata,
   amrex::Real /*time*/,
   const int* /*bcrec*/,
-  int /*level*/)
+  const int /*level*/)
 {
-  auto const data = datfab.const_array();
-  auto testfun = derfab.array();
-
-
-
-  auto const dat = datfab.const_array();
-  auto vel_ders = derfab.array();
-  
-  const amrex::Box& gbx = amrex::grow(bx, 1);
-  
-  amrex::FArrayBox local(gbx, 3, amrex::The_Async_Arena());
-  auto larr = local.array();
-  
-  const auto& flag_fab = amrex::getEBCellFlagFab(datfab);
-  const auto& typ = flag_fab.getType(bx);
-  if (typ == amrex::FabType::covered) {
-    derfab.setVal<amrex::RunOn::Device>(0.0, bx);
-    return;
-  }
-  const auto& flags = flag_fab.const_array();
-  const bool all_regular = typ == amrex::FabType::regular;
-
-
-
-
-
-  
-  const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> prob_low =
-    geomdata.ProbLoArray();
-  const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> prob_high =
-    geomdata.ProbHiArray();
-  const amrex::GpuArray<amrex::Real, AMREX_SPACEDIM> ddx =
-    geomdata.CellSizeArray();
-  AMREX_D_TERM(const amrex::Real centerx = 0.5 * (prob_low[0] + prob_high[0]);
-               , const amrex::Real centery = 0.5 * (prob_low[1] + prob_high[1]);
-               , const amrex::Real centerz = 0.5 * (prob_low[2] + prob_high[2]));
-
-  amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k) noexcept {
-			   AMREX_D_TERM(
-					const amrex::Real x = prob_low[0] + (i + 0.5) * ddx[0] - centerx;
-					, const amrex::Real y = prob_low[1] + (j + 0.5) * ddx[1] - centery;
-					, const amrex::Real z = prob_low[2] + (k + 0.5) * ddx[2] - centerz;);
-			   const amrex::Real r = sqrt(AMREX_D_TERM(x * x, +y * y, +z * z));
-			   testfun(i, j, k,0) = exp(-.5*r*r)*cos(5*3.1415926*r);
-			   testfun(i, j, k,1) = -(cos(5*3.1415926*r) + (5*3.1415926/r)*sin(5*3.1415926*r))*exp(-.5*r*r)*x;
-			   testfun(i, j, k,2) = -(cos(5*3.1415926*r) + (5*3.1415926/r)*sin(5*3.1415926*r))*exp(-.5*r*r)*y;
-			   testfun(i, j, k,3) = -(cos(5*3.1415926*r) + (5*3.1415926/r)*sin(5*3.1415926*r))*exp(-.5*r*r)*z;
-			   //testfun(i, j, k, 0)  = (x+y-.5*z>0)? 0 : 1;
-			   //testfun(i, j, k, 1)  = 0;
-			   //testfun(i, j, k, 2)  = 0;
-			   //testfun(i, j, k, 3)  = 0;
-			 });
-			   
-  amrex::ParallelFor(gbx, [=] AMREX_GPU_DEVICE(int i, int j, int k) noexcept {
-			    
-			    AMREX_D_TERM(
-					 const amrex::Real x = prob_low[0] + (i + 0.5) * ddx[0] - centerx;
-					 , const amrex::Real y = prob_low[1] + (j + 0.5) * ddx[1] - centery;
-					 , const amrex::Real z = prob_low[2] + (k + 0.5) * ddx[2] - centerz;);
-			    const amrex::Real r = sqrt(AMREX_D_TERM(x * x, +y * y, +z * z));
-			    larr(i, j, k) = exp(-.5*r*r)*cos(5*3.1415926*r);
-			    //larr(i, j, k)   = (x+y-.5*z>0)? 0 : 1;
-			  });
-  
-  AMREX_D_TERM(const amrex::Real dx = geomdata.CellSize(0);
-               , const amrex::Real dy = geomdata.CellSize(1);
-               , const amrex::Real dz = geomdata.CellSize(2););
-
-  amrex::ParallelFor(bx, [=] AMREX_GPU_DEVICE(int i, int j, int k) noexcept {
-			   AMREX_D_TERM(int im; int ip;, int jm; int jp;, int km; int kp;);
-			   AMREX_D_TERM(get_idx(i, 0, all_regular, flags(i, j, k), im, ip);
-					, get_idx(j, 1, all_regular, flags(i, j, k), jm, jp);
-					, get_idx(k, 2, all_regular, flags(i, j, k), km, kp););
-			   AMREX_D_TERM(const amrex::Real wi = get_weight(im, ip);
-					, const amrex::Real wj = get_weight(jm, jp);
-					, const amrex::Real wk = get_weight(km, kp););
-
-			   testfun(i, j, k, 4) = wi * (larr(ip, j, k) - larr(im, j, k)) / dx; 
-			   testfun(i, j, k, 5) = wj * (larr(i, jp, k) - larr(i, jm, k)) / dy; 
-			   testfun(i, j, k, 6) = wk * (larr(i, j, kp) - larr(i, j, km)) / dz;
-
-			   testfun(i,j,k,7) = testfun(i,j,k,1)-testfun(i,j,k,4);
-			   testfun(i,j,k,8) = testfun(i,j,k,2)-testfun(i,j,k,5);
-			   testfun(i,j,k,9) = testfun(i,j,k,3)-testfun(i,j,k,6);
-
-
-			   testfun(i,j,k,10) = dx;
-			   testfun(i,j,k,11) = dy;
-			   testfun(i,j,k,12) = dz;
-			   testfun(i,j,k,13) = kp;
-			   testfun(i,j,k,14) = k;
-			   testfun(i,j,k,15) = km;
-			     
-			   
-			 });
+  auto entropyInequality = derfab.array();
 }
+#endif
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
