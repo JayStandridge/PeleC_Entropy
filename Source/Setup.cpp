@@ -542,8 +542,8 @@ PeleC::variableSetUp()
    for (int i = 0; i < NUM_SPECIES; i++) {
     var_names_EI[9+i] = "EI(" + spec_names[i] + ")";
   }
-  for (int i = 0; i < test; i++) {
-     var_names_EI[9+NUM_SPECIES+i] = "EI(R-" + std::to_string(i) + ")";
+   for (int i = 0; i < NUM_REACTIONS; i++) {
+     var_names_EI[9+NUM_SPECIES+i] = "EI(Reaction-" + std::to_string(i) + ")";
   }
    derive_lst.add(
      "entropyInequality", amrex::IndexType::TheCellType(), 9 + NUM_SPECIES + test, var_names_EI,

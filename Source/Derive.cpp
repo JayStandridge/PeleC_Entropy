@@ -1413,7 +1413,9 @@ PeleC::pc_entropyInequality(
 
 			     
 			   }
-			   amrex::Real species_concentration[NUM_SPECIES] = {0.0};
+			   amrex::Real rho = dat(i, j, k, URHO);
+			   amrex::Real sc[NUM_SPECIES] = {0.0};
+
 			   amrex::Real q_f_temp[NUM_REACTIONS] = {0.0};
 			   amrex::Real q_r_temp[NUM_REACTIONS] = {0.0};
 			   amrex::Real q_f[NUM_REACTIONS] = {0.0};
@@ -1434,28 +1436,29 @@ PeleC::pc_entropyInequality(
 			   int rmap[21] = {0};
 			   int* rmapp = rmap;
 
+			   CKYTCR(rho,rho,massfrac, sc); //Need species concentration first
+			     
+			   for (int i = 0; i < NUM_SPECIES; i++) { 
+			     sc[i] *= 1e6; // in SI units for productionRate
+
+			   }
+			   
 			   GET_RMAP(rmapp);
 
 			   progressRateFR(q_f_temp, q_r_temp, sc, tc[1]);
-			   for (int i = 0; i < NUM_REACTIONS; i++) { 
-			     q_f[rmap[i]] = q_f_temp[i];
-			     q_r[rmap[i]] = q_r_temp[i];
+			   for (int n = 0; n < NUM_REACTIONS; n++) { 
+			     q_f[rmap[n]] = q_f_temp[n];
+			     q_r[rmap[n]] = q_r_temp[n];
 			   }
 
 			   entropyInequality(i,j,k,5) = 0.0;
-			   // Prod_rate_2 
-			   // for (int i = 0; i < NUM_REACTIONS; i++){
-			   //   CKINU(i+1, nspecr, kip, nup);
-			   //   wdot[i] = 1e-6 * (q_f[i] - q_r[i]);
-			   //   for (int m = 0; m < nspec; m++){
-			   //     prod_rate_2[ki[m]-1] +=wdot[i] * nu[m];
-			   //   }
-			   // }
 			   for (int n = 0; n < NUM_REACTIONS; n++) {
 			     CKINU(n+1, nspecr, kip, nup);
 			     wdot[n] = 1e-6 * (q_f[n] - q_r[n]);
 			     for (int m = 0; m < nspec; m++){
 			       entropyInequality(i,j,k,9+NUM_SPECIES+n) = wdot[n] * nu[m] * gibbs_fe[ki[m]-1];
+			       // entropyInequality(i,j,k,9+NUM_SPECIES+n) = wdot[n];
+			       
 			       entropyInequality(i,j,k,5) += wdot[n] * nu[m] * gibbs_fe[ki[m]-1];
 			     }
 			       
