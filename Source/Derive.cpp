@@ -5,8 +5,6 @@
 #include "PeleC.H"
 #include "IndexDefines.H"
 
-#include "temp.H"
-
 #include<math.h>
 #include<stdlib.h>
 
@@ -1438,9 +1436,6 @@ PeleC::pc_entropyInequality(
 
 			     
 			   }
-			   amrex::Real rho = dat(i, j, k, URHO);
-			   amrex::Real sc[NUM_SPECIES] = {0.0};
-
 			   amrex::Real q_f_temp[NUM_REACTIONS] = {0.0};
 			   amrex::Real q_r_temp[NUM_REACTIONS] = {0.0};
 			   amrex::Real q_f[NUM_REACTIONS] = {0.0};
