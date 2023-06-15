@@ -1009,14 +1009,15 @@ PeleC::pc_entropyInequality(
   auto gradXx       = local_gxx.array();
   amrex::FArrayBox local_gxy(bx, NUM_SPECIES, amrex::The_Async_Arena());
   auto gradXy       = local_gxy.array();
-  amrex::FArrayBox local_gxz(bx, NUM_SPECIES, amrex::The_Async_Arena());
-  auto gradXz       = local_gxz.array();
+  
+  //amrex::FArrayBox local_gxz(bx, NUM_SPECIES, amrex::The_Async_Arena());
+  //auto gradXz       = local_gxz.array();
   amrex::FArrayBox local_gyx(bx, NUM_SPECIES, amrex::The_Async_Arena());
   auto gradYx       = local_gyx.array();
   amrex::FArrayBox local_gyy(bx, NUM_SPECIES, amrex::The_Async_Arena());
   auto gradYy       = local_gyy.array();
-  amrex::FArrayBox local_gyz(bx, NUM_SPECIES, amrex::The_Async_Arena());
-  auto gradYz       = local_gyz.array();
+  //amrex::FArrayBox local_gyz(bx, NUM_SPECIES, amrex::The_Async_Arena());
+  //auto gradYz       = local_gyz.array();
   amrex::FArrayBox local_dti(bx, NUM_SPECIES, amrex::The_Async_Arena());
   auto Dti          = local_dti.array();
 
@@ -1024,22 +1025,22 @@ PeleC::pc_entropyInequality(
   auto dkx          = local_gdkx.array();
   amrex::FArrayBox local_gdky(bx, NUM_SPECIES, amrex::The_Async_Arena());
   auto dky          = local_gdky.array();
-  amrex::FArrayBox local_gdkz(bx, NUM_SPECIES, amrex::The_Async_Arena());
-  auto dkz          = local_gdkz.array();
+  //amrex::FArrayBox local_gdkz(bx, NUM_SPECIES, amrex::The_Async_Arena());
+  //auto dkz          = local_gdkz.array();
 
   amrex::FArrayBox local_gvkx(bx, NUM_SPECIES, amrex::The_Async_Arena());
   auto vkx          = local_gvkx.array();
   amrex::FArrayBox local_gvky(bx, NUM_SPECIES, amrex::The_Async_Arena());
   auto vky          = local_gvky.array();
-  amrex::FArrayBox local_gvkz(bx, NUM_SPECIES, amrex::The_Async_Arena());
-  auto vkz          = local_gvkz.array();
+  //amrex::FArrayBox local_gvkz(bx, NUM_SPECIES, amrex::The_Async_Arena());
+  //auto vkz          = local_gvkz.array();
 
   amrex::FArrayBox local_gjkx(bx, NUM_SPECIES, amrex::The_Async_Arena());
   auto jkx          = local_gjkx.array();
   amrex::FArrayBox local_gjky(bx, NUM_SPECIES, amrex::The_Async_Arena());
   auto jky          = local_gjky.array();
-  amrex::FArrayBox local_gjkz(bx, NUM_SPECIES, amrex::The_Async_Arena());
-  auto jkz          = local_gjkz.array();
+  //amrex::FArrayBox local_gjkz(bx, NUM_SPECIES, amrex::The_Async_Arena());
+  //auto jkz          = local_gjkz.array();
   
 
   amrex::FArrayBox local_gt(bx, 3, amrex::The_Async_Arena());
@@ -1186,7 +1187,8 @@ PeleC::pc_entropyInequality(
 			    }
 			    larr(i, j, k, 0) = dat(i, j, k, UMX) * rhoInv;
 			    larr(i, j, k, 1) = dat(i, j, k, UMY) * rhoInv;
-			    larr(i, j, k, 2) = dat(i, j, k, UMZ) * rhoInv;
+			    //larr(i, j, k, 2) = dat(i, j, k, UMZ) * rhoInv;
+
 			    // Temperature also added
 			    larr(i, j, k, 3) = dat(i, j, k, UTEMP);
 			    amrex::Real pressure;
@@ -1212,49 +1214,49 @@ PeleC::pc_entropyInequality(
 
   			   vel_ders(i, j, k, 0) = wi * (larr(ip, j, k, 0) - larr(im, j, k, 0)) / dx; // dudx
   			   vel_ders(i, j, k, 1) = wj * (larr(i, jp, k, 0) - larr(i, jm, k, 0)) / dy; // dudy
-  			   vel_ders(i, j, k, 2) = wk * (larr(i, j, kp, 0) - larr(i, j, km, 0)) / dz; // dudz
+  			   //vel_ders(i, j, k, 2) = wk * (larr(i, j, kp, 0) - larr(i, j, km, 0)) / dz; // dudz
 
   			   vel_ders(i, j, k, 3) = wi * (larr(ip, j, k, 1) - larr(im, j, k, 1)) / dx; // dvdx
   			   vel_ders(i, j, k, 4) = wj * (larr(i, jp, k, 1) - larr(i, jm, k, 1)) / dy; // dvdy
-  			   vel_ders(i, j, k, 5) = wk * (larr(i, j, kp, 1) - larr(i, j, km, 1)) / dz; // dvdz
+  			   //vel_ders(i, j, k, 5) = wk * (larr(i, j, kp, 1) - larr(i, j, km, 1)) / dz; // dvdz
 
   			   vel_ders(i, j, k, 6) = wi * (larr(ip, j, k, 2) - larr(im, j, k, 2)) / dx; // dwdx
   			   vel_ders(i, j, k, 7) = wj * (larr(i, jp, k, 2) - larr(i, jm, k, 2)) / dy; // dwdy
-  			   vel_ders(i, j, k, 8) = wk * (larr(i, j, kp, 2) - larr(i, j, km, 2)) / dz; // dwdz
+  			   //vel_ders(i, j, k, 8) = wk * (larr(i, j, kp, 2) - larr(i, j, km, 2)) / dz; // dwdz
 
 			   // My code
 
 			   gradT(i, j, k, 0) = wi * (larr(ip, j, k, 3) - larr(im, j, k, 3)) / dx; // dTdx
   			   gradT(i, j, k, 1) = wj * (larr(i, jp, k, 3) - larr(i, jm, k, 3)) / dy; // dTdy
-  			   gradT(i, j, k, 2) = wk * (larr(i, j, kp, 3) - larr(i, j, km, 3)) / dz; // dTdz
+  			   //gradT(i, j, k, 2) = wk * (larr(i, j, kp, 3) - larr(i, j, km, 3)) / dz; // dTdz
 
 			   gradP(i, j, k, 0) = wi * (larr(ip, j, k, 4) - larr(im, j, k, 4)) / dx; // dTdx
   			   gradP(i, j, k, 1) = wj * (larr(i, jp, k, 4) - larr(i, jm, k, 4)) / dy; // dTdy
-  			   gradP(i, j, k, 2) = wk * (larr(i, j, kp, 4) - larr(i, j, km, 4)) / dz; // dTdz
+  			   //gradP(i, j, k, 2) = wk * (larr(i, j, kp, 4) - larr(i, j, km, 4)) / dz; // dTdz
 
 			   for (int n = 0; n < NUM_SPECIES; n++) {
 			      gradXx(i, j, k, n) = wi * (specX(ip, j, k, n) - specX(im, j, k, n)) / dx; // dXdx
 			      gradXy(i, j, k, n) = wj * (specX(i, jp, k, n) - specX(i, jm, k, n)) / dy; // dXdy
-			      gradXz(i, j, k, n) = wk * (specX(i, j, kp, n) - specX(i, j, km, n)) / dz; // dXdz
+			      //gradXz(i, j, k, n) = wk * (specX(i, j, kp, n) - specX(i, j, km, n)) / dz; // dXdz
 			   }
 			   for (int n = 0; n < NUM_SPECIES; n++) {
 			      gradYx(i, j, k, n) = wi * (specY(ip, j, k, n) - specY(im, j, k, n)) / dx; // dYdx
 			      gradYy(i, j, k, n) = wj * (specY(i, jp, k, n) - specY(i, jm, k, n)) / dy; // dYdy
-			      gradYz(i, j, k, n) = wk * (specY(i, j, kp, n) - specY(i, j, km, n)) / dz; // dYdz
+			      //gradYz(i, j, k, n) = wk * (specY(i, j, kp, n) - specY(i, j, km, n)) / dz; // dYdz
 			   }
 			   
 
-			   divu(i,j,k,0) = vel_ders(i, j, k, 0) + vel_ders(i, j, k, 4) + vel_ders(i, j, k, 8);
+			   divu(i,j,k,0) = vel_ders(i, j, k, 0) + vel_ders(i, j, k, 4);// + vel_ders(i, j, k, 8);
 
 			   // First term of differential entropy inequality
 			   //EIterm1
 			   entropyInequality(i,j,k,0)=(2/3*pow(divu(i,j,k),2)
 						      -2*( pow(vel_ders(i, j, k, 0),2)
 							   + pow(vel_ders(i, j, k, 4),2)
-							   +pow( vel_ders(i, j, k, 8),2))
-						      -(pow(vel_ders(i, j, k, 2) + vel_ders(i, j, k, 3),2)
-							+ pow(vel_ders(i, j, k, 2) + vel_ders(i, j, k, 6),2)
-							+ pow(vel_ders(i, j, k, 7) + vel_ders(i, j, k, 5),2)));
+							   /*+pow( vel_ders(i, j, k, 8),2)*/)
+						      -(pow(/*vel_ders(i, j, k, 2)+*/ vel_ders(i, j, k, 3),2)
+							+ pow(/*vel_ders(i, j, k, 2) +*/ vel_ders(i, j, k, 6),2)
+							+ pow(vel_ders(i, j, k, 7)/* + vel_ders(i, j, k, 5)*/,2)));
 
 			   //EITerm2
 			   //using AUX1, AUX2, and AUX3 to store the energy flux vector
@@ -1270,28 +1272,28 @@ PeleC::pc_entropyInequality(
 			   for (int n = 0; n < NUM_SPECIES; n++) {
 			     dkx(i,j,k,n) = gradXx(i,j,k,n) + barodiffusion * (specX(i,j,k,n) - specY(i,j,k,n))*gradP(i,j,k,0)/larr(i,j,k,4);
 			     dky(i,j,k,n) = gradXy(i,j,k,n) + barodiffusion * (specX(i,j,k,n) - specY(i,j,k,n))*gradP(i,j,k,1)/larr(i,j,k,4);
-			     dkz(i,j,k,n) = gradXz(i,j,k,n) + barodiffusion * (specX(i,j,k,n) - specY(i,j,k,n))*gradP(i,j,k,2)/larr(i,j,k,4);
+			     // dkz(i,j,k,n) = gradXz(i,j,k,n) + barodiffusion * (specX(i,j,k,n) - specY(i,j,k,n))*gradP(i,j,k,2)/larr(i,j,k,4);
 			   }
 			   // Diffusion Velocity
 			   for (int n = 0; n < NUM_SPECIES; n++) {
 			     sden=std::max(specX(i,j,k,n),pow(10,-8));
 			     vkx(i,j,k,n) = -d_arr(i,j,k,n) * dkx(i,j,k,n) / sden;
 			     vky(i,j,k,n) = -d_arr(i,j,k,n) * dky(i,j,k,n) / sden;
-			     vkz(i,j,k,n) = -d_arr(i,j,k,n) * dkz(i,j,k,n) / sden;
+			     // vkz(i,j,k,n) = -d_arr(i,j,k,n) * dkz(i,j,k,n) / sden;
 			   }
 			   if (do_soret) {
 			     for (int n = 0; n < NUM_SPECIES; n++) {
 			       sden=std::max(specY(i,j,k,n),pow(10,-8));
 			       vkx(i,j,k,n) -= Dti(i,j,k,n) * gradT(i,j,k,0) / ( dat(i,j,k,URHO) * sden * larr(i,j,k,3));
 			       vky(i,j,k,n) -= Dti(i,j,k,n) * gradT(i,j,k,1) / ( dat(i,j,k,URHO) * sden * larr(i,j,k,3));
-			       vkz(i,j,k,n) -= Dti(i,j,k,n) * gradT(i,j,k,2) / ( dat(i,j,k,URHO) * sden * larr(i,j,k,3));
+			       //vkz(i,j,k,n) -= Dti(i,j,k,n) * gradT(i,j,k,2) / ( dat(i,j,k,URHO) * sden * larr(i,j,k,3));
 			     }
 			   }
 			   // multicomponent species flux
 			   for (int n = 0; n < NUM_SPECIES; n++) {
 			     jkx(i,j,k,n) = dat(i,j,k,URHO) * specY(i,j,k,n) * vkx(i,j,k,n);
 			     jky(i,j,k,n) = dat(i,j,k,URHO) * specY(i,j,k,n) * vky(i,j,k,n);
-			     jkz(i,j,k,n) = dat(i,j,k,URHO) * specY(i,j,k,n) * vkz(i,j,k,n);
+			     //jkz(i,j,k,n) = dat(i,j,k,URHO) * specY(i,j,k,n) * vkz(i,j,k,n);
 			   }
 
 			   
@@ -1299,11 +1301,11 @@ PeleC::pc_entropyInequality(
 			     sden=std::max(dat(i,j,k,UFS+n),pow(10,-8)); // No dividing by zero
 			     entropyInequality(i,j,k,5)+= dkx(i,j,k,n) * Dti(i,j,k,n)/sden;
 			     entropyInequality(i,j,k,6)+= dky(i,j,k,n) * Dti(i,j,k,n)/sden;
-			     entropyInequality(i,j,k,7)+= dkz(i,j,k,n) * Dti(i,j,k,n)/sden;
+			     //entropyInequality(i,j,k,7)+= dkz(i,j,k,n) * Dti(i,j,k,n)/sden;
 			   }
 			   entropyInequality(i,j,k,5)*=-c_tot(i,j,k)*pele::physics::Constants::RU*larr(i,j,k,3);
 			   entropyInequality(i,j,k,6)*=-c_tot(i,j,k)*pele::physics::Constants::RU*larr(i,j,k,3);
-			   entropyInequality(i,j,k,7)*=-c_tot(i,j,k)*pele::physics::Constants::RU*larr(i,j,k,3);
+			   //entropyInequality(i,j,k,7)*=-c_tot(i,j,k)*pele::physics::Constants::RU*larr(i,j,k,3);
 
 
 			   
@@ -1319,17 +1321,17 @@ PeleC::pc_entropyInequality(
 			       h_specific[n] *= pow(10,-7); //ergs/g -> j/g
 			       entropyInequality(i,j,k,5)+=h_specific[n]*jkx(i,j,k,n);
 			       entropyInequality(i,j,k,6)+=h_specific[n]*jky(i,j,k,n);
-			       entropyInequality(i,j,k,7)+=h_specific[n]*jkz(i,j,k,n);
+			       //entropyInequality(i,j,k,7)+=h_specific[n]*jkz(i,j,k,n);
 			     }
 			   }
 			   
 			   entropyInequality(i,j,k,5)-=lam_arr(i,j,k)*gradT(i,j,k,0);
 			   entropyInequality(i,j,k,6)-=lam_arr(i,j,k)*gradT(i,j,k,1);
-			   entropyInequality(i,j,k,7)-=lam_arr(i,j,k)*gradT(i,j,k,2);
+			   //entropyInequality(i,j,k,7)-=lam_arr(i,j,k)*gradT(i,j,k,2);
 			   
 			   entropyInequality(i,j,k,1)=(entropyInequality(i,j,k,5)*gradT(i,j,k,0)+
-						       entropyInequality(i,j,k,6)*gradT(i,j,k,1)+
-						       entropyInequality(i,j,k,7)*gradT(i,j,k,2))/larr(i,j,k,3);
+						       entropyInequality(i,j,k,6)*gradT(i,j,k,1)
+						       /*+entropyInequality(i,j,k,7)*gradT(i,j,k,2)*/)/larr(i,j,k,3);
 			   // EITerm3
 			   // Start by getting the Dij matrix:
 			   logt(i,j,k,0) = std::log(larr(i,j,k,3));
@@ -1379,7 +1381,7 @@ PeleC::pc_entropyInequality(
 			     sden=std::max(dat(i,j,k,UFS+n),pow(10,-8)); // No dividing by zero
 			     entropyInequality(i,j,k,2) += jkx(i,j,k,n)*(dkx(i,j,k,n) / sden - dkx(i,j,k,NUM_SPECIES-1) / dat(i,j,k,UFS+NUM_SPECIES-1));
 			     entropyInequality(i,j,k,2) += jky(i,j,k,n)*(dky(i,j,k,n) / sden - dky(i,j,k,NUM_SPECIES-1) / dat(i,j,k,UFS+NUM_SPECIES-1));
-			     entropyInequality(i,j,k,2) += jkz(i,j,k,n)*(dkz(i,j,k,n) / sden - dkz(i,j,k,NUM_SPECIES-1) / dat(i,j,k,UFS+NUM_SPECIES-1));
+			     //entropyInequality(i,j,k,2) += jkz(i,j,k,n)*(dkz(i,j,k,n) / sden - dkz(i,j,k,NUM_SPECIES-1) / dat(i,j,k,UFS+NUM_SPECIES-1));
 			   }
 
 			   entropyInequality(i,j,k,2) *= c_tot(i,j,k) * pele::physics::Constants::RU * larr(i,j,k,3);
