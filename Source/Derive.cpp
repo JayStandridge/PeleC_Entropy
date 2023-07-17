@@ -1269,26 +1269,28 @@ PeleC::pc_entropyInequality(
 			   }
 			   
 
-			   divu(i,j,k,0) = vel_ders(i, j, k, 0) + vel_ders(i, j, k, 4);// + vel_ders(i, j, k, 8);
+			   divu(i,j,k,0) = vel_ders(i, j, k, 0) + vel_ders(i, j, k, 4);
+        if(dim >2)
+          divu(i,j,k,0) += vel_ders(i, j, k, 8);
 			   
 			   // First term of differential entropy inequality
 			   //EIterm1
-			   if (dim == 2){
+			  if (dim == 2){
 			     entropyInequality(i,j,k,0)=(2/3*pow(divu(i,j,k),2)
-							 -2*( pow(vel_ders(i, j, k, 0),2)
+						      -2*( pow(vel_ders(i, j, k, 0),2)
 							   + pow(vel_ders(i, j, k, 4),2))
-							 -(pow(vel_ders(i, j, k, 3),2)
-							   + pow(vel_ders(i, j, k, 6),2)
-							   + pow(vel_ders(i, j, k, 7),2)));
+						      -(pow(vel_ders(i, j, k, 3),2)
+							+ pow( vel_ders(i, j, k, 6),2)
+							+ pow(vel_ders(i, j, k, 7),2)));
 			   }
 			   if (dim > 2){
-			     entropyInequality(i,j,k,0)=2/3*pow(divu(i,j,k),2)
-							 -2*( pow(vel_ders(i, j, k, 0),2)
-							      + pow(vel_ders(i, j, k, 4),2)
-							      +pow( vel_ders(i, j, k, 8),2)
-							      -(pow(vel_ders(i, j, k, 2)+ vel_ders(i, j, k, 3),2)
-								+pow(vel_ders(i, j, k, 2) + vel_ders(i, j, k, 6),2)
-								+ pow(vel_ders(i, j, k, 7) + vel_ders(i, j, k, 5),2)));
+			     entropyInequality(i,j,k,0)=(2/3*pow(divu(i,j,k),2)
+						      -2*( pow(vel_ders(i, j, k, 0),2)
+							   + pow(vel_ders(i, j, k, 4),2)
+							   +pow( vel_ders(i, j, k, 8),2))
+						      -(pow(vel_ders(i, j, k, 2) + vel_ders(i, j, k, 3),2)
+							+ pow(vel_ders(i, j, k, 2) + vel_ders(i, j, k, 6),2)
+							+ pow(vel_ders(i, j, k, 7) + vel_ders(i, j, k, 5),2)));
 							 }						 
 			       //EITerm2
 			       //using AUX1, AUX2, and AUX3 to store the energy flux vector
@@ -1446,7 +1448,8 @@ PeleC::pc_entropyInequality(
 			   gibbs(gibbs_fe,tc);
 			   // Get chemical potential, or molar gibbs
 			   for (int n = 0; n < NUM_SPECIES; n++) {
-			     gibbs_fe[n] *= pele::physics::Constants::RU * larr(i,j,k,3) * mw_arr[n];// * pow(10,-7); keep in CGS
+			     gibbs_fe[n] += std::log(std::max(sc[n]*RU*T,0.0));
+			     gibbs_fe[n] *= pele::physics::Constants::RU * larr(i,j,k,3);// * pow(10,-7); keep in CGS
 			   }
 			   // Get rate of production of each species
 			   amrex::Real sc[NUM_SPECIES] = {0.0};
@@ -1461,12 +1464,13 @@ PeleC::pc_entropyInequality(
 			   }
 
 			   productionRate(prod_rate, sc, tc[1]);
+         CKWYR(dat(i,j,k,URHO), larr(i,j,k,3), massfrac, prod_rate2);
 
 			   //Calculate fourth term
 			   entropyInequality(i,j,k,3) = 0.0;
 			   for (int n = 0; n < NUM_SPECIES; n++) {
 			     prod_rate[n] *= 1e-6;
-			     entropyInequality(i,j,k,3) += prod_rate[n] * gibbs_fe[n];
+			     entropyInequality(i,j,k,3) += prod_rate2[n] * gibbs_fe[n];
 			   }
 
 			   // Sum of all terms
@@ -1478,7 +1482,7 @@ PeleC::pc_entropyInequality(
 			   
 			   //Check each species portion of fourth term
 			   for (int n = 0; n < NUM_SPECIES; n++) {
-			     entropyInequality(i,j,k,9+n)= prod_rate[n]* gibbs_fe[n];
+			     entropyInequality(i,j,k,9+n)= prod_rate2[n]* gibbs_fe[n];
 
 			     
 			   }
@@ -1525,7 +1529,7 @@ PeleC::pc_entropyInequality(
 			       entropyInequality(i,j,k,9+NUM_SPECIES+n) = wdot[n] * nu[m] * gibbs_fe[ki[m]-1];
 			       // entropyInequality(i,j,k,9+NUM_SPECIES+n) = wdot[n];
 			       
-			       entropyInequality(i,j,k,5) += wdot[n] * nu[m] * gibbs_fe[ki[m]-1];
+			       entropyInequality(i,j,k,5) -= wdot[n] * nu[m] * gibbs_fe[ki[m]-1];
 			     }
 			       
 			   }
