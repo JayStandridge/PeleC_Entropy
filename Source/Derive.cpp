@@ -1230,108 +1230,115 @@ PeleC::pc_entropyInequality(
 
   			   vel_ders(i, j, k, 0) = wi * (larr(ip, j, k, 0) - larr(im, j, k, 0)) / dx; // dudx
   			   vel_ders(i, j, k, 1) = wj * (larr(i, jp, k, 0) - larr(i, jm, k, 0)) / dy; // dudy
-			   if (dim > 2)
-			     vel_ders(i, j, k, 2) = wk * (larr(i, j, kp, 0) - larr(i, j, km, 0)) / dz; // dudz
 
+#if dim > 2 
+			   vel_ders(i, j, k, 2) = wk * (larr(i, j, kp, 0) - larr(i, j, km, 0)) / dz; // dudz
+#endif
   			   vel_ders(i, j, k, 3) = wi * (larr(ip, j, k, 1) - larr(im, j, k, 1)) / dx; // dvdx
   			   vel_ders(i, j, k, 4) = wj * (larr(i, jp, k, 1) - larr(i, jm, k, 1)) / dy; // dvdy
-			   if (dim > 2)
-			     vel_ders(i, j, k, 5) = wk * (larr(i, j, kp, 1) - larr(i, j, km, 1)) / dz; // dvdz
-
-  			   vel_ders(i, j, k, 6) = wi * (larr(ip, j, k, 2) - larr(im, j, k, 2)) / dx; // dwdx
+#if dim > 2 
+			   vel_ders(i, j, k, 5) = wk * (larr(i, j, kp, 1) - larr(i, j, km, 1)) / dz; // dvdz
+#endif
+			   vel_ders(i, j, k, 6) = wi * (larr(ip, j, k, 2) - larr(im, j, k, 2)) / dx; // dwdx
   			   vel_ders(i, j, k, 7) = wj * (larr(i, jp, k, 2) - larr(i, jm, k, 2)) / dy; // dwdy
-			   if (dim > 2)
+#if dim > 2 
 			     vel_ders(i, j, k, 8) = wk * (larr(i, j, kp, 2) - larr(i, j, km, 2)) / dz; // dwdz
-
+#endif
 			   // My code
 
 			   gradT(i, j, k, 0) = wi * (larr(ip, j, k, 3) - larr(im, j, k, 3)) / dx; // dTdx
   			   gradT(i, j, k, 1) = wj * (larr(i, jp, k, 3) - larr(i, jm, k, 3)) / dy; // dTdy
-  			   if(dim > 2)
+#if dim > 2 
 			     gradT(i, j, k, 2) = wk * (larr(i, j, kp, 3) - larr(i, j, km, 3)) / dz; // dTdz
-
+#endif
 			   gradP(i, j, k, 0) = wi * (larr(ip, j, k, 4) - larr(im, j, k, 4)) / dx; // dTdx
   			   gradP(i, j, k, 1) = wj * (larr(i, jp, k, 4) - larr(i, jm, k, 4)) / dy; // dTdy
-  			   if(dim > 2)
+#if dim > 2
 			     gradP(i, j, k, 2) = wk * (larr(i, j, kp, 4) - larr(i, j, km, 4)) / dz; // dTdz
-
+#endif
 			   for (int n = 0; n < NUM_SPECIES; n++) {
 			      gradXx(i, j, k, n) = wi * (specX(ip, j, k, n) - specX(im, j, k, n)) / dx; // dXdx
 			      gradXy(i, j, k, n) = wj * (specX(i, jp, k, n) - specX(i, jm, k, n)) / dy; // dXdy
-			      if(dim > 2)
+#if dim > 2
 				gradXz(i, j, k, n) = wk * (specX(i, j, kp, n) - specX(i, j, km, n)) / dz; // dXdz
+#endif
 			   }
 			   for (int n = 0; n < NUM_SPECIES; n++) {
 			      gradYx(i, j, k, n) = wi * (specY(ip, j, k, n) - specY(im, j, k, n)) / dx; // dYdx
 			      gradYy(i, j, k, n) = wj * (specY(i, jp, k, n) - specY(i, jm, k, n)) / dy; // dYdy
-			      if(dim > 2)
+#if dim > 2
 				gradYz(i, j, k, n) = wk * (specY(i, j, kp, n) - specY(i, j, km, n)) / dz; // dYdz
+#endif
 			   }
 			   
 
 			   divu(i,j,k,0) = vel_ders(i, j, k, 0) + vel_ders(i, j, k, 4);
-        if(dim >2)
-          divu(i,j,k,0) += vel_ders(i, j, k, 8);
-			   
+#if dim >2
+			   divu(i,j,k,0) += vel_ders(i, j, k, 8);
+#endif
 			   // First term of differential entropy inequality
 			   //EIterm1
-			  if (dim == 2){
-			     entropyInequality(i,j,k,0)=(2/3*pow(divu(i,j,k),2)
-						      -2*( pow(vel_ders(i, j, k, 0),2)
-							   + pow(vel_ders(i, j, k, 4),2))
-						      -(pow(vel_ders(i, j, k, 3),2)
-							+ pow( vel_ders(i, j, k, 6),2)
-							+ pow(vel_ders(i, j, k, 7),2)));
-			   }
-			   if (dim > 2){
-			     entropyInequality(i,j,k,0)=(2/3*pow(divu(i,j,k),2)
-						      -2*( pow(vel_ders(i, j, k, 0),2)
-							   + pow(vel_ders(i, j, k, 4),2)
-							   +pow( vel_ders(i, j, k, 8),2))
-						      -(pow(vel_ders(i, j, k, 2) + vel_ders(i, j, k, 3),2)
-							+ pow(vel_ders(i, j, k, 2) + vel_ders(i, j, k, 6),2)
-							+ pow(vel_ders(i, j, k, 7) + vel_ders(i, j, k, 5),2)));
-							 }						 
+#if  dim == 2
+			   entropyInequality(i,j,k,0)=(2/3*pow(divu(i,j,k),2)
+						       -2*( pow(vel_ders(i, j, k, 0),2)
+							    + pow(vel_ders(i, j, k, 4),2))
+						       -(pow(vel_ders(i, j, k, 3),2)
+							 + pow( vel_ders(i, j, k, 6),2)
+							 + pow(vel_ders(i, j, k, 7),2)));
+#endif
+#if  dim > 2
+			   entropyInequality(i,j,k,0)=(2/3*pow(divu(i,j,k),2)
+						       -2*( pow(vel_ders(i, j, k, 0),2)
+							    + pow(vel_ders(i, j, k, 4),2)
+							    +pow( vel_ders(i, j, k, 8),2))
+						       -(pow(vel_ders(i, j, k, 2) + vel_ders(i, j, k, 3),2)
+							 + pow(vel_ders(i, j, k, 2) + vel_ders(i, j, k, 6),2)
+							 + pow(vel_ders(i, j, k, 7) + vel_ders(i, j, k, 5),2)));
+#endif       					 
 			       //EITerm2
 			       //using AUX1, AUX2, and AUX3 to store the energy flux vector
-			       entropyInequality(i,j,k,5)=0; //AUX1
-			     entropyInequality(i,j,k,6)=0; //AUX2
-			     entropyInequality(i,j,k,7)=0; //AUX3
-			     float sden;
-			     amrex::Real barodiffusion = 0.0;
-			     if (do_barodiffusion) {
-			       barodiffusion = 1.0;
-			     }
-			     // Diffusion driving force
+			   entropyInequality(i,j,k,5)=0; //AUX1
+			   entropyInequality(i,j,k,6)=0; //AUX2
+			   entropyInequality(i,j,k,7)=0; //AUX3
+			   float sden;
+			   amrex::Real barodiffusion = 0.0;
+			   if (do_barodiffusion) {
+			     barodiffusion = 1.0;
+			   }
+			   // Diffusion driving force
 			   for (int n = 0; n < NUM_SPECIES; n++) {
 			     dkx(i,j,k,n) = gradXx(i,j,k,n) + barodiffusion * (specX(i,j,k,n) - specY(i,j,k,n))*gradP(i,j,k,0)/larr(i,j,k,4);
 			     dky(i,j,k,n) = gradXy(i,j,k,n) + barodiffusion * (specX(i,j,k,n) - specY(i,j,k,n))*gradP(i,j,k,1)/larr(i,j,k,4);
-			     if(dim >2)
-			       dkz(i,j,k,n) = gradXz(i,j,k,n) + barodiffusion * (specX(i,j,k,n) - specY(i,j,k,n))*gradP(i,j,k,2)/larr(i,j,k,4);
-			   }
+#if dim >2
+			     dkz(i,j,k,n) = gradXz(i,j,k,n) + barodiffusion * (specX(i,j,k,n) - specY(i,j,k,n))*gradP(i,j,k,2)/larr(i,j,k,4);
+#endif
+			     }
 			   // Diffusion Velocity
 			   for (int n = 0; n < NUM_SPECIES; n++) {
 			     sden=std::max(specX(i,j,k,n),pow(10,-8));
 			     vkx(i,j,k,n) = -d_arr(i,j,k,n) * dkx(i,j,k,n) / sden;
 			     vky(i,j,k,n) = -d_arr(i,j,k,n) * dky(i,j,k,n) / sden;
-			     if(dim > 2)
-			       vkz(i,j,k,n) = -d_arr(i,j,k,n) * dkz(i,j,k,n) / sden;
+# if dim > 2 
+			     vkz(i,j,k,n) = -d_arr(i,j,k,n) * dkz(i,j,k,n) / sden;
+#endif
 			   }
 			   if (do_soret) {
 			     for (int n = 0; n < NUM_SPECIES; n++) {
 			       sden=std::max(specY(i,j,k,n),pow(10,-8));
 			       vkx(i,j,k,n) -= Dti(i,j,k,n) * gradT(i,j,k,0) / ( dat(i,j,k,URHO) * sden * larr(i,j,k,3));
 			       vky(i,j,k,n) -= Dti(i,j,k,n) * gradT(i,j,k,1) / ( dat(i,j,k,URHO) * sden * larr(i,j,k,3));
-			       if(dim > 2)
-				 vkz(i,j,k,n) -= Dti(i,j,k,n) * gradT(i,j,k,2) / ( dat(i,j,k,URHO) * sden * larr(i,j,k,3));
+#if dim > 2
+			       vkz(i,j,k,n) -= Dti(i,j,k,n) * gradT(i,j,k,2) / ( dat(i,j,k,URHO) * sden * larr(i,j,k,3));
+#endif
 			     }
 			   }
 			   // multicomponent species flux
 			   for (int n = 0; n < NUM_SPECIES; n++) {
 			     jkx(i,j,k,n) = dat(i,j,k,URHO) * specY(i,j,k,n) * vkx(i,j,k,n);
 			     jky(i,j,k,n) = dat(i,j,k,URHO) * specY(i,j,k,n) * vky(i,j,k,n);
-			     if(dim > 2)
-			       jkz(i,j,k,n) = dat(i,j,k,URHO) * specY(i,j,k,n) * vkz(i,j,k,n);
+#if dim > 2 
+			     jkz(i,j,k,n) = dat(i,j,k,URHO) * specY(i,j,k,n) * vkz(i,j,k,n);
+#endif
 			   }
 			   
 			   
@@ -1339,14 +1346,15 @@ PeleC::pc_entropyInequality(
 			     sden=std::max(dat(i,j,k,UFS+n),pow(10,-8)); // No dividing by zero
 			     entropyInequality(i,j,k,5)+= dkx(i,j,k,n) * Dti(i,j,k,n)/sden;
 			     entropyInequality(i,j,k,6)+= dky(i,j,k,n) * Dti(i,j,k,n)/sden;
-			     if(dim > 2)
-			       entropyInequality(i,j,k,7)+= dkz(i,j,k,n) * Dti(i,j,k,n)/sden;
+#if dim > 2
+			     entropyInequality(i,j,k,7)+= dkz(i,j,k,n) * Dti(i,j,k,n)/sden;
+#endif
 			   }
 			   entropyInequality(i,j,k,5)*=-c_tot(i,j,k)*pele::physics::Constants::RU*larr(i,j,k,3);
 			   entropyInequality(i,j,k,6)*=-c_tot(i,j,k)*pele::physics::Constants::RU*larr(i,j,k,3);
-			   if(dim > 2)
-			     entropyInequality(i,j,k,7)*=-c_tot(i,j,k)*pele::physics::Constants::RU*larr(i,j,k,3);
-			   
+#if dim > 2 
+			   entropyInequality(i,j,k,7)*=-c_tot(i,j,k)*pele::physics::Constants::RU*larr(i,j,k,3);
+#endif
 			   
 			   
 			   if ( do_enthalpy_diffusion ){
@@ -1361,22 +1369,26 @@ PeleC::pc_entropyInequality(
 			       h_specific[n] *= pow(10,-7); //ergs/g -> j/g
 			       entropyInequality(i,j,k,5)+=h_specific[n]*jkx(i,j,k,n);
 			       entropyInequality(i,j,k,6)+=h_specific[n]*jky(i,j,k,n);
-			       if(dim > 2)
-				 entropyInequality(i,j,k,7)+=h_specific[n]*jkz(i,j,k,n);
+#if dim > 2 
+			       entropyInequality(i,j,k,7)+=h_specific[n]*jkz(i,j,k,n);
+#endif
 			     }
 			   }
 			   
 			   entropyInequality(i,j,k,5)-=lam_arr(i,j,k)*gradT(i,j,k,0);
 			   entropyInequality(i,j,k,6)-=lam_arr(i,j,k)*gradT(i,j,k,1);
-			   if(dim > 2)
-			     entropyInequality(i,j,k,7)-=lam_arr(i,j,k)*gradT(i,j,k,2);
-			   if(dim == 2)
-			     entropyInequality(i,j,k,1)=(entropyInequality(i,j,k,5)*gradT(i,j,k,0)+
-							 entropyInequality(i,j,k,6)*gradT(i,j,k,1))/larr(i,j,k,3);
-			   if(dim > 2)
-			     entropyInequality(i,j,k,1)=(entropyInequality(i,j,k,5)*gradT(i,j,k,0)+
-							 entropyInequality(i,j,k,6)*gradT(i,j,k,1)
-							 +entropyInequality(i,j,k,7)*gradT(i,j,k,2))/larr(i,j,k,3);
+#if dim > 2
+			   entropyInequality(i,j,k,7)-=lam_arr(i,j,k)*gradT(i,j,k,2);
+#endif
+#if dim == 2 
+			   entropyInequality(i,j,k,1)=(entropyInequality(i,j,k,5)*gradT(i,j,k,0)+
+						       entropyInequality(i,j,k,6)*gradT(i,j,k,1))/larr(i,j,k,3);
+#endif
+#if dim > 2
+			   entropyInequality(i,j,k,1)=(entropyInequality(i,j,k,5)*gradT(i,j,k,0)+
+						       entropyInequality(i,j,k,6)*gradT(i,j,k,1)
+						       +entropyInequality(i,j,k,7)*gradT(i,j,k,2))/larr(i,j,k,3);
+#endif
 			   // EITerm3
 			   // Start by getting the Dij matrix:
 			   logt(i,j,k,0) = std::log(larr(i,j,k,3));
@@ -1388,14 +1400,14 @@ PeleC::pc_entropyInequality(
 			     {
 			       for (int jj = 0; jj < NUM_SPECIES; ++jj)
 				 {
-			       const int four_idx_ij = 4 * (ii + NUM_SPECIES * jj);
-			       const amrex::Real dbintemp =
+				   const int four_idx_ij = 4 * (ii + NUM_SPECIES * jj);
+				   const amrex::Real dbintemp =
 				 ltransparm->fitdbin[four_idx_ij] +
-				 ltransparm->fitdbin[1 + four_idx_ij] * logt(i,j,k,0) +
-				 ltransparm->fitdbin[2 + four_idx_ij] * logt(i,j,k,1) +
-				 ltransparm->fitdbin[3 + four_idx_ij] * logt(i,j,k,2);
-			   Dij(i,j,k,ii+NUM_SPECIES*jj)=ltransparm->wt[ii] * std::exp(dbintemp) * scale;
-			     }
+				     ltransparm->fitdbin[1 + four_idx_ij] * logt(i,j,k,0) +
+				     ltransparm->fitdbin[2 + four_idx_ij] * logt(i,j,k,1) +
+				     ltransparm->fitdbin[3 + four_idx_ij] * logt(i,j,k,2);
+				   Dij(i,j,k,ii+NUM_SPECIES*jj)=ltransparm->wt[ii] * std::exp(dbintemp) * scale;
+				 }
 			     }
 			   // Verify Dij matrix with an analytical expression from Fluent:
 			   amrex::Real massfrac[NUM_SPECIES];
@@ -1429,28 +1441,25 @@ PeleC::pc_entropyInequality(
 			     if(dim > 2)
 			       entropyInequality(i,j,k,2) += jkz(i,j,k,n)*(dkz(i,j,k,n) / sden - dkz(i,j,k,NUM_SPECIES-1) / dat(i,j,k,UFS+NUM_SPECIES-1));
 			   }
-
+			   
 			   entropyInequality(i,j,k,2) *= c_tot(i,j,k) * pele::physics::Constants::RU * larr(i,j,k,3);
 			   
 			   // EITERM4
 			   amrex::Real tc[5] = {0.0};
 			   amrex::Real gibbs_fe[NUM_SPECIES] = {0.0};
+         amrex::Real gibbs_standard[NUM_SPECIES] = {0.0};
 			   amrex::Real prod_rate[NUM_SPECIES] = {0.0};
 			   amrex::Real prod_rate2[NUM_SPECIES] = {0.0};
 			   
 			   amrex::Real rho = dat(i, j, k, URHO);
-
+			   
 			   tc[1] = larr(i,j,k,3);
 			   tc[0] = std::log(tc[1]);
 			   tc[2] = pow(tc[1],2);
 			   tc[3] = pow(tc[1],3);
 			   tc[4] = pow(tc[1],4);
 			   gibbs(gibbs_fe,tc);
-			   // Get chemical potential, or molar gibbs
-			   for (int n = 0; n < NUM_SPECIES; n++) {
-			     gibbs_fe[n] += std::log(std::max(sc[n]*RU*T,0.0));
-			     gibbs_fe[n] *= pele::physics::Constants::RU * larr(i,j,k,3);// * pow(10,-7); keep in CGS
-			   }
+			   
 			   // Get rate of production of each species
 			   amrex::Real sc[NUM_SPECIES] = {0.0};
 			   for (int n = 0; n < NUM_SPECIES; n++) {
@@ -1458,6 +1467,13 @@ PeleC::pc_entropyInequality(
 			   }
 			   CKYTCR(rho,rho,massfrac, sc); //Need species concentration first
 			     
+			   // Get chemical potential, or molar gibbs
+			   for (int n = 0; n < NUM_SPECIES; n++) {
+           gibbs_standard[n] = 8.314 * larr(i,j,k,3) * gibbs_fe[n];
+			     gibbs_fe[n] += std::log(std::max(1e6*sc[n]*8.31446 * larr(i,j,k,3)/101325,1e-200));
+			     gibbs_fe[n] *= 8.31446 * larr(i,j,k,3);// * pow(10,-7); keep in CGS
+			   }
+			   
 			   for (int i = 0; i < NUM_SPECIES; i++) { 
 			     sc[i] *= 1e6; // in SI units for productionRate
 
@@ -1468,9 +1484,11 @@ PeleC::pc_entropyInequality(
 
 			   //Calculate fourth term
 			   entropyInequality(i,j,k,3) = 0.0;
+         entropyInequality(i,j,k,5) = 0.0;
 			   for (int n = 0; n < NUM_SPECIES; n++) {
 			     prod_rate[n] *= 1e-6;
-			     entropyInequality(i,j,k,3) += prod_rate2[n] * gibbs_fe[n];
+			     entropyInequality(i,j,k,3) += prod_rate[n] * gibbs_fe[n];
+           entropyInequality(i,j,k,5) += prod_rate[n] * gibbs_fe[n];
 			   }
 
 			   // Sum of all terms
@@ -1482,7 +1500,7 @@ PeleC::pc_entropyInequality(
 			   
 			   //Check each species portion of fourth term
 			   for (int n = 0; n < NUM_SPECIES; n++) {
-			     entropyInequality(i,j,k,9+n)= prod_rate2[n]* gibbs_fe[n];
+			     entropyInequality(i,j,k,9+n)= prod_rate[n] *gibbs_fe[n];
 
 			     
 			   }
@@ -1519,21 +1537,47 @@ PeleC::pc_entropyInequality(
 			   for (int n = 0; n < NUM_REACTIONS; n++) { 
 			     q_f[rmap[n]] = q_f_temp[n];
 			     q_r[rmap[n]] = q_r_temp[n];
+           entropyInequality(i,j,k,9+NUM_SPECIES+n) = 0;
 			   }
-
-			   entropyInequality(i,j,k,5) = 0.0;
+        double DG_j[NUM_REACTIONS] = {0.0};
+        double DG_j_s[NUM_REACTIONS] = {0.0};
+        double EI_j[NUM_REACTIONS] = {0.0};
 			   for (int n = 0; n < NUM_REACTIONS; n++) {
 			     CKINU(n+1, nspecr, kip, nup);
 			     wdot[n] = 1e-6 * (q_f[n] - q_r[n]);
 			     for (int m = 0; m < nspec; m++){
-			       entropyInequality(i,j,k,9+NUM_SPECIES+n) = wdot[n] * nu[m] * gibbs_fe[ki[m]-1];
-			       // entropyInequality(i,j,k,9+NUM_SPECIES+n) = wdot[n];
-			       
-			       entropyInequality(i,j,k,5) -= wdot[n] * nu[m] * gibbs_fe[ki[m]-1];
-			     }
-			       
-			   }
+			      //  entropyInequality(i,j,k,9+NUM_SPECIES+n) +=  nu[m] * gibbs_fe[ki[m]-1];
+			       entropyInequality(i,j,k,9+NUM_SPECIES+n) += wdot[n]* nu[m] * gibbs_fe[ki[m]-1];
+			       DG_j[n] += nu[m] * gibbs_fe[ki[m]-1];
+             DG_j_s[n] += nu[m] * gibbs_standard[ki[m]-1];
+			       EI_j[n] += wdot[n] * nu[m] * gibbs_fe[ki[m]-1];
+             entropyInequality(i,j,k,5) -= wdot[n] * nu[m] * gibbs_fe[ki[m]-1];
+			      }
+         }
+            if((i==0)&&(j==0)){
+              // Open the file in append mode
+              std::ofstream outputFile("output2.txt", std::ios_base::app);
+
+              // Check if the file is open
+              if (!outputFile.is_open()) {
+                std::cerr << "Error opening the file." << std::endl;
+              }
+
+              // Append the values to the file
+              int jj = {15};
+                outputFile << "DGs : " << DG_j_s[jj]/(8.31446*larr(i,j,k,3)) << ", ";
+                outputFile << "Dgs are " <<gibbs_fe[5] << " and " << gibbs_fe[7] <<", ";
+                outputFile << "SCs are " <<sc[5] << " and " << sc[7] <<", ";
+                outputFile << "omega " <<jj<<": " << wdot[jj] << ", ";
+                outputFile << "DG " <<jj<<": " << DG_j[jj] << ", ";
+                outputFile << "EI " <<jj<<": " << EI_j[jj] << ", ";
+              
+              outputFile << "EI Term 4: " << entropyInequality(0,0,0,3) << "\n";
+              // Close the file
+              outputFile.close();
+            }      
 			   });
+          
 
 }
 #else
