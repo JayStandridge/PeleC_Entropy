@@ -1,0 +1,62 @@
+Host Name: login2
+=== If no file names and line numbers are shown below, one can run
+            addr2line -Cpfie my_exefile my_line_address
+    to convert `my_line_address` (e.g., 0x4a6b) into file name and line number.
+    Or one can use amrex/Tools/Backtrace/parse_bt.py.
+
+=== Please note that the line number reported by addr2line may not be accurate.
+    One can use
+            readelf -wl my_exefile | grep my_line_address'
+    to find out the offset for that line.
+
+ 0: ./PeleC2d.gnu.MPI.ex() [0x631836]
+    amrex::BLBackTrace::print_backtrace_info(_IO_FILE*)
+/scratch/user/jaystandridge/lanl/PeleC_Entropy/Exec/RegTests/FlameAGRI/../../../Submodules/AMReX/Src/Base/AMReX_BLBackTrace.cpp:196:36
+
+ 1: ./PeleC2d.gnu.MPI.ex() [0x6339d7]
+    amrex::BLBackTrace::handler(int)
+/scratch/user/jaystandridge/lanl/PeleC_Entropy/Exec/RegTests/FlameAGRI/../../../Submodules/AMReX/Src/Base/AMReX_BLBackTrace.cpp:96:15
+
+ 2: /lib64/libc.so.6(+0x4eb80) [0x7fd3ad56eb80]
+
+ 3: /sw/eb/sw/GCCcore/11.2.0/lib64/libstdc++.so.6(_ZNSt15basic_streambufIcSt11char_traitsIcEE6xsputnEPKcl+0x63) [0x7fd3addbe4a3]
+    std::char_traits<char>::to_int_type(char const&) inlined at /tmp/baum/easybuild/GCCcore/11.2.0/system-system/gcc-11.2.0/stage3_obj/x86_64-pc-linux-gnu/libstdc++-v3/include/bits/streambuf.tcc:98:37 in std::basic_streambuf<char, std::char_traits<char> >::xsputn(char const*, long)
+/tmp/baum/easybuild/GCCcore/11.2.0/system-system/gcc-11.2.0/stage3_obj/x86_64-pc-linux-gnu/libstdc++-v3/include/bits/char_traits.h:432:65
+std::basic_streambuf<char, std::char_traits<char> >::xsputn(char const*, long)
+/tmp/baum/easybuild/GCCcore/11.2.0/system-system/gcc-11.2.0/stage3_obj/x86_64-pc-linux-gnu/libstdc++-v3/include/bits/streambuf.tcc:98:37
+
+ 4: /sw/eb/sw/GCCcore/11.2.0/lib64/libstdc++.so.6(_ZSt16__ostream_insertIcSt11char_traitsIcEERSt13basic_ostreamIT_T0_ES6_PKS3_l+0x164) [0x7fd3addb0534]
+    void std::__ostream_write<char, std::char_traits<char> >(std::basic_ostream<char, std::char_traits<char> >&, char const*, long) inlined at /tmp/baum/easybuild/GCCcore/11.2.0/system-system/gcc-11.2.0/stage3_obj/x86_64-pc-linux-gnu/libstdc++-v3/include/bits/ostream_insert.h:45:5 in std::basic_ostream<char, std::char_traits<char> >& std::__ostream_insert<char, std::char_traits<char> >(std::basic_ostream<char, std::char_traits<char> >&, char const*, long)
+/tmp/baum/easybuild/GCCcore/11.2.0/system-system/gcc-11.2.0/stage3_obj/x86_64-pc-linux-gnu/libstdc++-v3/include/bits/ostream_insert.h:53:16
+void std::__ostream_write<char, std::char_traits<char> >(std::basic_ostream<char, std::char_traits<char> >&, char const*, long)
+/tmp/baum/easybuild/GCCcore/11.2.0/system-system/gcc-11.2.0/stage3_obj/x86_64-pc-linux-gnu/libstdc++-v3/include/bits/ostream_insert.h:45:5
+std::basic_ostream<char, std::char_traits<char> >& std::__ostream_insert<char, std::char_traits<char> >(std::basic_ostream<char, std::char_traits<char> >&, char const*, long)
+/tmp/baum/easybuild/GCCcore/11.2.0/system-system/gcc-11.2.0/stage3_obj/x86_64-pc-linux-gnu/libstdc++-v3/include/bits/ostream_insert.h:102:18
+
+ 5: ./PeleC2d.gnu.MPI.ex() [0x8f17aa]
+    std::basic_ostream<char, std::char_traits<char> >& std::operator<< <std::char_traits<char> >(std::basic_ostream<char, std::char_traits<char> >&, char) inlined at /scratch/user/jaystandridge/lanl/PeleC_Entropy/Exec/RegTests/FlameAGRI/../../../Submodules/AMReX/Src/Base/AMReX_Print.H:91:16 in PeleC::variableSetUp()
+/sw/eb/sw/GCCcore/11.2.0/include/c++/11.2.0/ostream:518:30
+amrex::Print& amrex::Print::operator<< <char>(char const&)
+/scratch/user/jaystandridge/lanl/PeleC_Entropy/Exec/RegTests/FlameAGRI/../../../Submodules/AMReX/Src/Base/AMReX_Print.H:91:16
+PeleC::variableSetUp()
+/scratch/user/jaystandridge/lanl/PeleC_Entropy/Exec/RegTests/FlameAGRI/../../../Source/Setup.cpp:294:42
+
+ 6: ./PeleC2d.gnu.MPI.ex() [0x669d91]
+    amrex::Amr::InitAmr()
+/scratch/user/jaystandridge/lanl/PeleC_Entropy/Exec/RegTests/FlameAGRI/../../../Submodules/AMReX/Src/Amr/AMReX_Amr.cpp:238:28
+
+ 7: ./PeleC2d.gnu.MPI.ex() [0x66be71]
+    amrex::Amr::Amr(amrex::LevelBld*)
+/scratch/user/jaystandridge/lanl/PeleC_Entropy/Exec/RegTests/FlameAGRI/../../../Submodules/AMReX/Src/Amr/AMReX_Amr.cpp:211:1
+
+ 8: ./PeleC2d.gnu.MPI.ex() [0x435570]
+    amrex::AmrMesh::maxLevel() const inlined at /scratch/user/jaystandridge/lanl/PeleC_Entropy/Exec/RegTests/FlameAGRI/../../../Source/main.cpp:131:17 in main
+/scratch/user/jaystandridge/lanl/PeleC_Entropy/Exec/RegTests/FlameAGRI/../../../Submodules/AMReX/Src/AmrCore/AMReX_AmrMesh.H:84:59
+main
+/scratch/user/jaystandridge/lanl/PeleC_Entropy/Exec/RegTests/FlameAGRI/../../../Source/main.cpp:131:17
+
+ 9: /lib64/libc.so.6(__libc_start_main+0xe5) [0x7fd3ad55ad85]
+
+10: ./PeleC2d.gnu.MPI.ex() [0x4366fe]
+    _start at ??:?
+
